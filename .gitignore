@@ -1,0 +1,29 @@
+# Dependency Directories
+**/node_modules/
+
+# Production Build Directories
+frontend/dist/
+backend/dist/
+
+# Environment Variables & Secrets
+backend/.env
+backend/.env.local
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor Directories
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
