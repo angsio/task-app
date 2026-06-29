@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-function App() {
+import useFetch from './hooks/useFetch'
+
+const App = () => {
+  const { data, loading, error } = useFetch('http://localhost:5000/api/pulse')
+
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
-      <div className="bg-slate-900 border border-slate-800 p-8 rounded-lg text-center shadow-lg">
-        <h1 className="text-2xl font-semibold tracking-tight">Hello World!</h1>
+    <div className="min-h-screen flex items-center justify-center text-black">
+      <div className="p-8 text-center">
+        {data && <p>{data.status}</p>}
+        {loading && <p>Loading...</p>}
+        {error && <p>{error.message}</p>}
       </div>
     </div>
   )
