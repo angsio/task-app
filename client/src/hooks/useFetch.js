@@ -6,6 +6,11 @@ const useFetch = (url) => {
     const [error, setError] = useState(null)
 
     useEffect(() => {
+
+        setData(null)
+        setLoading(true)
+        setError(null)
+
         fetch(url)
             .then(res => {
                 if (!res.ok) { throw new Error('Something went wrong.') }
