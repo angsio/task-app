@@ -1,4 +1,5 @@
 import useFetch from './hooks/useFetch'
+import List from './components/List'
 
 const App = () => {
   const { data, loading, error } = useFetch('http://localhost:5000/api/data')
@@ -9,15 +10,17 @@ const App = () => {
   return (
     <div className="min-h-screen flex items-center justify-center text-black">
       <div className="p-8 text-center">
-        {data && data.length > 0 ? (
-          data.map(task => 
-            <div key={task._id}>
-              <p>Name: {task.name}</p>
+        <List
+          items={data}
+          fallback={<p>No tasks.</p>}
+          keyExtractor={item => item._id}
+        >
+          {(item, key) => (
+            <div key={key}>
+              {item.name}
             </div>
-          )
-        ) : (
-          <p>No tasks.</p>
-        )}
+          )}
+        </List>
       </div>
     </div>
   )
