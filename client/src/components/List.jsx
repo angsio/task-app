@@ -1,4 +1,6 @@
-const List = (
+import { Fragment } from 'react'
+
+export const List = (
     {
         items,
         fallback,
@@ -6,15 +8,13 @@ const List = (
         children
     }
 ) => {
-
     if (!items || items.length === 0) {
         return fallback
     }
 
-    return items.map((item, index) => {
-        const key = keyExtractor(item, index)
-        return children(item, key, index)
-    })
+    return items.map((item, index) => (
+        <Fragment key={keyExtractor(item, index)}>
+            {children(item, index)}
+        </Fragment>
+    ))
 }
-
-export default List

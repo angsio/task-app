@@ -2,12 +2,9 @@
 **/node_modules/
 
 # Production Build Directories
-frontend/dist/
-backend/dist/
+client/dist/
 
 # Environment Variables & Secrets
-backend/.env
-backend/.env.local
 .env
 .env.local
 

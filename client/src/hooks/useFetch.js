@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const useFetch = (url) => {
+export const useFetch = (asyncFn) => {
     const [data, setData] = useState(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -11,11 +11,7 @@ const useFetch = (url) => {
         setLoading(true)
         setError(null)
 
-        fetch(url)
-            .then(res => {
-                if (!res.ok) { throw new Error('Something went wrong.') }
-                return res.json()
-            })
+        asyncFn()
             .then(data => {
                 setData(data)
                 setLoading(false)
@@ -24,9 +20,7 @@ const useFetch = (url) => {
                 setError(error)
                 setLoading(false)
             })
-    }, [url])
+    }, [asyncFn])
 
     return { data, loading, error }
 }
-
-export default useFetch

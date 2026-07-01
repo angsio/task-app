@@ -38,12 +38,6 @@ app.get('/api/data', async (req, res) => {
     }
 })
 
-app.get('/api/pulse', (req, res) => {
-    res.json({
-        status: "Still Alive"
-    })
-})
-
 app.listen(PORT, () => {
     console.log(`Server is running in development mode on port ${PORT}`);
 });
