@@ -1,1 +1,1 @@
-export { MainLayout } from './MainLayout'
+export { FixedNavbarFixedFooterLayout } from './FixedNavbarFixedFooterLayout'

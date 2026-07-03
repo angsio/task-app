@@ -1,0 +1,129 @@
+FRONTEND CONVENTIONS — task-app client
+These are self-imposed rules distilled from working through this codebase.
+They're guidelines for judgment calls, not syntax the linter enforces.
+
+
+1. EXPORTS
+   Named exports only, everywhere. No `export default`.
+   Every folder that groups related files gets an index.js barrel that
+   re-exports them, e.g. `export { Navbar } from './Navbar'`.
+   Why: consistent import style (`import { X } from '../y'` everywhere),
+   and renaming a file never silently breaks an anonymous default import.
+
+
+2. FOLDER LAYERS AND WHO CAN DEPEND ON WHOM
+
+   components/  hooks/  api/     <- bottom layer, no knowledge of each other
+         |         |       |        or of anything above them
+         +---------+-------+
+                   v
+              features/            <- combines the bottom layer into one
+                   v                  real domain concept (e.g. "tasklists")
+               pages/               <- arranges one or more features into
+                   v                   a screen
+              layouts/  (parallel)  <- generic chrome, depends only on
+                   v                   components/
+               routes/              <- wires URL paths to (layout, page)
+                   v                   pairs
+               App.jsx              <- mounts the router
+                   v
+              main.jsx              <- mounts App into the DOM
+
+   Dependencies only flow downward through this list. features/ can import
+   from components/hooks/api. pages/ can import from features/. Nothing
+   at the bottom ever imports from something above it.
+
+   Test for components/ and hooks/: "could this file be copied into an
+   unrelated project and still make sense?" If yes, it belongs there —
+   it must not know what a "task" or a "tasklist" is.
+
+   Test for features/ vs pages/: "does this need domain knowledge (task
+   names, endpoints, specific data shapes)?" If yes, features/. pages/
+   should stay a thin composition of one or more features — no fetching,
+   no domain logic of its own.
+
+
+3. api/ vs hooks/
+   api/   = the only place allowed to know the server contract: endpoint
+            URLs, HTTP methods, request/response shapes. Plain async
+            functions (getTasks, later createTask/deleteTask/...).
+   hooks/ = generic React state orchestration around *any* async
+            operation. useFetch takes a function, not a URL, and has
+            zero knowledge of tasks or endpoints — it would work
+            identically wrapping an unrelated async call.
+   Why the split: a URL-based fetch hook can only ever do "GET on
+   mount." Real apps need create/update/delete, which aren't URL-shaped.
+   Keeping hooks/ generic means it never has to change as api/ grows.
+
+   GOTCHA: useFetch's effect depends on the function reference
+   ([asyncFn]). A module-level function (`getTasks`) is stable across
+   renders automatically. An inline arrow function written inside a
+   component body (`() => getTasksForList(id)`) is a NEW function
+   object every render, which retriggers the effect every render,
+   which causes an infinite fetch loop. Any time the function needs to
+   close over a prop or piece of state, wrap it in useCallback with
+   that value in the dependency array:
+       const fetchTasks = useCallback(() => getTasksForList(id), [id])
+       const { data } = useFetch(fetchTasks)
+
+
+4. GENERIC COMPONENTS MUST STAY DUMB ABOUT LAYOUT
+   components/List.jsx maps items with keys and nothing else — it does
+   not own a wrapping div, a grid, or any container opinion. That
+   decision belongs to whichever feature is using it, because a
+   generic component may be reused in places that want totally
+   different layouts (e.g. List is reused for a vertical stack of
+   tasks inside a tasklist, not just the 4-column tasklist grid).
+   Corollary: content passed INTO a generic component (like List's
+   `fallback` prop) must be self-sufficient for whatever container it
+   lands in. Don't teach List to special-case "this child is a
+   fallback, treat it differently" — instead make the fallback content
+   itself cooperate, e.g. `<p className="col-span-full ...">` so it
+   spans a grid row regardless of column count, instead of hardcoding
+   a specific column number anywhere.
+
+
+5. ROUTING
+   RouterProvider + createBrowserRouter own "what renders for this
+   URL." Route objects have `path`, `element`, and optionally
+   `children`. A layout is just the `element` of a parent route that
+   renders an <Outlet/> — Outlet is the exact spot where the matching
+   child route's element gets inserted. A layout never imports the
+   pages that render inside it; that decoupling is the whole point —
+   Navbar/Footer stay mounted across navigation, only the Outlet
+   contents swap.
+
+   Name layouts after their Navbar/Footer behavior, not generically
+   ("MainLayout"), since a growing site may have several coexisting at
+   once for different route subtrees:
+       FixedNavbarFixedFooterLayout   - both pinned, inner scroll region
+                                        (used for /tasks — a tool the
+                                        user needs constant nav access to)
+       StickyTopNavbarInlineFooterLayout - navbar sticky, whole page
+                                        scrolls, footer just sits at the
+                                        end of the document (suits a
+                                        content/marketing page, not a
+                                        tool)
+
+
+6. CLASSNAME OWNERSHIP (one axis of concern per layer)
+   layouts/   owns viewport occupancy + chrome positioning:
+              h-screen/min-h-screen, overflow-y-auto, sticky/fixed on
+              Navbar/Footer. Never reaches into what's inside Outlet.
+   pages/     owns spacing BETWEEN sibling features on one screen
+              (flex/gap/padding wrapping multiple features). Never
+              touches viewport height or scroll behavior (that's
+              layouts/), never dictates a feature's internal layout
+              (that's features/).
+   features/  owns everything about how its own domain content
+              presents itself (grid columns, card sizing, internal
+              spacing). Must stay layout-agnostic — no h-screen, no
+              fixed/sticky, no assumptions about its container's size.
+              Sizes itself relative to its parent only (w-full, etc.)
+              so it works unchanged inside any layout.
+
+   Quick test: "would this className still make sense if I swapped
+   what's on the other side of this boundary?" If a feature assumes
+   viewport height, it's leaking a layout concern downward. If a
+   layout hardcodes a grid-column count, it's reaching too far into
+   feature territory.
