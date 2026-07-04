@@ -85,6 +85,20 @@ app.delete('/api/tasklists/:id', async (req, res) => {
 
 // -- tasks (nested within a tasklist) --
 
+app.get('/api/tasklists/:id/tasks', async (req, res) => {
+    try {
+        const taskList = await TaskList.findById(req.params.id)
+        if (!taskList) return res.status(404).json({ error: 'Tasklist not found.' })
+        res.json(taskList.tasks)
+    }
+    catch (error) {
+        console.error('Failed:', error)
+        res.status(500).json({
+            error: 'Database read failed.'
+        })
+    }
+})
+
 app.post('/api/tasklists/:id/tasks', async (req, res) => {
     try {
         const taskList = await TaskList.findById(req.params.id)

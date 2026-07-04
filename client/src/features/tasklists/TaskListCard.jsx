@@ -3,6 +3,8 @@ import { updateTaskList, deleteTaskList } from '../../api'
 import { useSubmit } from '../../hooks'
 import { EditableText } from '../../components'
 import { useTaskListsContext } from './TaskListsContext'
+import { TaskUtilityRow } from './TaskUtilityRow'
+import { TaskItems } from './TaskItems'
 
 export const TaskListCard = ({ taskList }) => {
     const [isEditingName, setIsEditingName] = useState(false)
@@ -12,7 +14,7 @@ export const TaskListCard = ({ taskList }) => {
 
     const { handleTaskListUpdated, handleTaskListDeleted } = useTaskListsContext()
 
-    const handleDelete = async () => {
+    const handleDeleteTaskList = async () => {
         const id = await submitDelete(taskList._id)
         if (!id) return
 
@@ -39,7 +41,8 @@ export const TaskListCard = ({ taskList }) => {
                     onCancel={handleNameCancel}
                     disabled={updating}
                 />
-                <div className="flex flex-row gap-4">
+                <div className="flex flex-row items-center gap-4">
+                    <TaskUtilityRow taskListId={taskList._id} onTaskCreated={handleTaskListUpdated} />
                     <button
                         type="button"
                         className="h-4 w-4 bg-gray-500"
@@ -47,10 +50,11 @@ export const TaskListCard = ({ taskList }) => {
                     <button
                         type="button"
                         className="h-4 w-4 bg-red-600"
-                        onClick={handleDelete} />
+                        onClick={handleDeleteTaskList} />
                 </div>
             </div>
-            <div className="flex-1 min-h-24 w-full border">
+            <div className="flex-1 min-h-24 w-full border p-4">
+                <TaskItems tasks={taskList.tasks} />
             </div>
         </div>
     )

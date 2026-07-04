@@ -22,7 +22,6 @@ export const useFetch = (asyncFn, deps = [asyncFn]) => {
 
     useEffect(() => {
         runFetch()
-        // deps is caller-supplied, like useEffect's own array — the caller owns its correctness.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, deps)
 

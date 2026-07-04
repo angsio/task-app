@@ -12,7 +12,10 @@ export const EditableText = ({ value, active, onSubmit, onCancel, disabled }) =>
         return <span>{value}</span>
     }
 
-    const commit = () => onSubmit(draft)
+    const commit = () => {
+        if (disabled) return
+        onSubmit(draft)
+    }
 
     const handleKeyDown = (event) => {
         if (event.key === 'Escape') onCancel()

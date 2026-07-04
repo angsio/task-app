@@ -23,7 +23,7 @@ export const TaskLists = () => {
         <TaskListsProvider value={{ 
             handleTaskListCreated, 
             handleTaskListUpdated, 
-            handleTaskListDeleted 
+            handleTaskListDeleted
         }}>
             <TaskUtilityBar />
             <TaskListGrid taskLists={data} loading={loading} error={error} />
