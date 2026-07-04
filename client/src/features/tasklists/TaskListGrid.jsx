@@ -1,24 +1,19 @@
-import { useOutletContext } from 'react-router-dom'
-import { useFetch } from '../../hooks'
-import { getTaskLists } from '../../api'
 import { List } from '../../components'
 import { TaskListCard } from './TaskListCard'
 
-export const TaskListGrid = () => {
-    const { taskListsVersion } = useOutletContext()
-    const { data, loading, error } = useFetch(getTaskLists, [taskListsVersion])
+export const TaskListGrid = ({ taskLists, loading, error }) => {
 
-    if (loading) return <p>Loading...</p>
-    if (error) return <p>Error: {error.message}</p>
+    if (taskLists === null && loading) return <p>Loading...</p>
+    if (taskLists === null && error) return <p>Error: {error.message}</p>
 
     return (
-        <div className="grid grid-cols-4 w-full">
+        <div className="grid grid-cols-4 gap-4 p-10 w-full">
             <List
-                items={data}
-                fallback={<p className="col-span-full text-center py-12">No task lists yet.</p>}
-                keyExtractor={(taskList) => taskList._id}
+                items={taskLists}
+                fallback={<p className="col-span-full text-center">No task lists yet.</p>}
+                keyExtractor={taskList => taskList._id}
             >
-                {(taskList) => <TaskListCard name={taskList.name} />}
+                {taskList => <TaskListCard taskList={taskList} />}
             </List>
         </div>
     )

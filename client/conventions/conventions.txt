@@ -108,8 +108,9 @@ They're guidelines for judgment calls, not syntax the linter enforces.
 
 6. CLASSNAME OWNERSHIP (one axis of concern per layer)
    layouts/   owns viewport occupancy + chrome positioning:
-              h-screen/min-h-screen, overflow-y-auto, sticky/fixed on
-              Navbar/Footer. Never reaches into what's inside Outlet.
+              h-screen/min-h-screen, overflow-y-auto, fixed positioning
+              relative to the viewport. Never reaches into what's
+              inside Outlet.
    pages/     owns spacing BETWEEN sibling features on one screen
               (flex/gap/padding wrapping multiple features). Never
               touches viewport height or scroll behavior (that's
@@ -117,13 +118,165 @@ They're guidelines for judgment calls, not syntax the linter enforces.
               (that's features/).
    features/  owns everything about how its own domain content
               presents itself (grid columns, card sizing, internal
-              spacing). Must stay layout-agnostic — no h-screen, no
-              fixed/sticky, no assumptions about its container's size.
-              Sizes itself relative to its parent only (w-full, etc.)
-              so it works unchanged inside any layout.
+              spacing, and how its own children relate to each other
+              while scrolling). Must stay layout-agnostic — no
+              h-screen, no fixed, no assumptions about its container's
+              size. Sizes itself relative to its parent only (w-full,
+              etc.) so it works unchanged inside any layout.
 
    Quick test: "would this className still make sense if I swapped
    what's on the other side of this boundary?" If a feature assumes
    viewport height, it's leaking a layout concern downward. If a
    layout hardcodes a grid-column count, it's reaching too far into
    feature territory.
+
+   `sticky` vs `fixed` is the one nuance worth calling out explicitly:
+   `fixed` pins relative to the *viewport* — using it requires knowing
+   about the whole page, which is exactly the kind of assumption
+   features/ isn't allowed to make, so it stays layout/-only. `sticky`
+   pins relative to an element's *nearest scrolling ancestor*, whatever
+   that happens to be — it never needs to know what that ancestor is,
+   only that one exists, so it works correctly inside any layout
+   without modification. That's why TaskUtilityBar can declare
+   `sticky top-0` on itself (a features/ file) to stay in view above
+   TaskListGrid while it scrolls, without violating layout-agnosticism
+   — it's a decision about how the feature's own children relate to
+   each other, not an assumption about the surrounding page.
+
+
+7. hooks/ IS ORGANIZED BY LIFECYCLE SHAPE, NOT BY VERB OR RESOURCE
+   api/ and hooks/ look inconsistent at a glance (api/ has many
+   functions, hooks/ has two) but they're organized along two
+   different, unrelated axes on purpose:
+     api/   axis = resource + server operation. Grows to mirror the
+            Express routes 1:1 (getTaskLists, createTaskList,
+            updateTaskList, deleteTaskList, createTask, ...).
+     hooks/ axis = when the operation runs relative to rendering.
+            There are exactly two shapes, ever:
+              useFetch  - runs automatically, tied to mount / to a
+                          `deps` array changing. For anything the
+                          component needs the moment it appears.
+              useSubmit - runs only when explicitly called
+                          (`submit(...args)`), tracks its own
+                          `submitting`/`error`, returns the result or
+                          `undefined` on failure (callers never need
+                          try/catch). For anything a user triggers.
+   This is NOT about GET vs POST/PATCH/DELETE. useSubmit is equally
+   correct for a create, an update, or a delete — the HTTP verb lives
+   inside whichever api/ function you pass it, the hook never knows
+   or cares. Do NOT build usePatch/useRemove/useCreate — they would
+   be byte-for-byte identical to useSubmit, differing only in name,
+   which means every future bug fix has to be applied N times instead
+   of once. If a hook already generalizes over "any function," adding
+   a same-shaped hook per verb is pure duplication, not consistency.
+
+
+8. EVERY FEATURE HAS EXACTLY ONE COORDINATOR
+   Each features/<name>/ folder has one component named after the
+   folder itself (features/tasklists/ -> TaskLists.jsx) that is the
+   feature's only public export from index.js. Everything else in the
+   folder (TaskListGrid, TaskUtilityBar, TaskListCard) is a private
+   implementation detail, reachable only by relative import from
+   inside the folder — never re-exported.
+
+   The coordinator owns whatever data/state the feature's children
+   need to share (e.g. TaskLists.jsx runs useFetch once, hands
+   `data`/`loading`/`error` down to TaskListGrid, and hands a
+   change-handler like `onTaskListCreated` down to TaskUtilityBar
+   that patches `data` directly via `setData` — see section 7, no
+   refetch involved) and passes it down as ordinary props, one level
+   deep.
+
+   The rule that actually produces low coupling / high cohesion:
+   the coordinator is the only file allowed to know about all of its
+   direct children at once. The children never import each other —
+   TaskListGrid and TaskUtilityBar don't know the other exists, only
+   the shape of the props they're each handed. That's what makes any
+   one of them replaceable or independently reusable without rippling
+   changes into its siblings. (A child can still have its own private
+   sub-children beneath it, like TaskListGrid -> TaskListCard — that's
+   a different, deeper nesting level, not a violation of this rule.)
+
+   This shape repeats at every layer of the app, not just features/:
+   App coordinates the router; routes/ coordinates (layout, page)
+   pairs; a page coordinates one-or-more features; a feature
+   coordinates its own leaf components. Same principle throughout —
+   one node owns the shared thing, its children only ever see their
+   own slice of it.
+
+
+9. TAILWIND SPACING HAS EXACTLY TWO ROLES — PICK ONE ON PURPOSE,
+   DON'T IMPROVISE A NEW NUMBER PER EDIT
+   Tailwind's numeric scale (1, 2, 3, 4...) is already a consistent
+   system (each step is a fixed rem value everywhere); the mess isn't
+   Tailwind, it's picking a fresh number reactively every time
+   something needs spacing, with no relationship between the choices.
+   The fix is deciding what ROLE a number plays and reusing that same
+   number for that same role everywhere, instead of re-guessing it.
+
+   Two roles exist in this app so far:
+     4  = tight internal grouping — spacing between elements that are
+          part of one visual unit (padding inside a TaskListCard, the
+          gap between its header row and its inner tasks box, the gap
+          between grid cells that together form one grid).
+     10 = section/page-level separation — spacing between a whole
+          feature and the edge of its container (TaskUtilityBar's
+          `px-10`, TaskListGrid's `p-10`).
+
+   Before writing a new spacing className, ask "is this tight
+   internal grouping, or section-level separation?" and reuse 4 or 10
+   accordingly. If neither role fits a genuinely new situation, that's
+   when a third role gets *named and added here* — not invented
+   silently in one component and forgotten.
+
+   Applies the same way to sizes that aren't really about spacing
+   between things but about "how big is this fixed-size control" —
+   e.g. TaskListCard's delete button is `h-4 w-4`, deliberately reusing
+   the same "4" as tight-grouping, not a new arbitrary number, since a
+   small fixed control and its surrounding tight spacing read as one
+   consistent scale rather than two unrelated choices.
+
+   Growing containers (like TaskListCard's inner tasks box) get a
+   `min-h-*` floor, not a fixed `h-*` — `min-h-24` here is a deliberate
+   "smallest acceptable empty state" pick, paired with `flex-1` so it
+   claims any extra space its flex parent has (relevant once sibling
+   cards in the same grid row are taller and grid stretches this one
+   to match). Fixed `h-*` on anything meant to grow with future content
+   is a bug, not a style choice — it silently caps growth.
+
+
+10. WHEN A FEATURE OUTGROWS PROPS: A SCOPED CONTEXT, NOT GLOBAL STATE
+    Section 8 said "just use props" for TaskLists' two direct children
+    (TaskUtilityBar, TaskListGrid) — that was correct when neither of
+    them forwarded anything to a level below itself. It stops being
+    correct once a value needs to reach a descendant through an
+    intermediate that doesn't otherwise care about it (TaskListGrid
+    forwarding a delete-callback purely so TaskListCard can call it),
+    especially once more depth is coming on purpose (tasks nested
+    inside each card next). That's the same "many, unpredictable
+    depths, through indifferent intermediates" test from section 6 —
+    when it's met, add a Context scoped to that one feature folder,
+    not a prop threaded through every level.
+
+    Shape it narrowly: Context carries only the "notify the
+    coordinator this succeeded" callbacks (e.g. `onTaskListDeleted`),
+    never the mutation itself and never raw fetched data. The
+    component that triggers an action still owns its own useSubmit
+    call and its own loading/error locally (TaskListCard calls
+    useSubmit(deleteTaskList) itself, so it can show its own pending/
+    error state) — it only reaches into context once its own action
+    has already succeeded, to tell the coordinator to update shared
+    data. Data that's specific to one item (like which taskList a
+    card represents) still flows down normally through the render-prop
+    that's already iterating that item — Context doesn't replace that,
+    it only replaces cross-cutting callbacks that would otherwise be
+    threaded through components with no use for them.
+
+    Where it lives: TaskListsContext.js sits in the same
+    features/tasklists/ folder as everything else it coordinates —
+    it's still private to that feature (not exported from index.js),
+    and it's still the coordinator (TaskLists.jsx) that creates the
+    Provider and computes the values, consistent with section 8: one
+    node owns the shared thing, descendants only ever read their slice
+    of it — Context is a different mechanism for that read, not a
+    different owner.

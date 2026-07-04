@@ -1,5 +1,5 @@
-import { TaskListGrid } from '../features/tasklists'
+import { TaskLists } from '../features/tasklists'
 
 export const TasksPage = () => {
-    return <TaskListGrid />
+    return <TaskLists />
 }
