@@ -1,18 +1,21 @@
 import { useState } from 'react'
+import { useNotifications } from '../notifications'
 
+// Every user-triggered mutation flows through here, so this catch block is the
+// single point where mutation errors converge — reported to the notifications
+// sink and swallowed, so callers just check the return (result or undefined).
 export const useSubmit = (asyncFn) => {
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
+    const { notify } = useNotifications()
 
     const submit = async (...args) => {
         setLoading(true)
-        setError(null)
 
         try {
             return await asyncFn(...args)
         }
         catch (err) {
-            setError(err)
+            notify(err.message)
             return undefined
         }
         finally {
@@ -20,5 +23,5 @@ export const useSubmit = (asyncFn) => {
         }
     }
 
-    return { submit, loading, error }
+    return { submit, loading }
 }

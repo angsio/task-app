@@ -29,9 +29,7 @@ export const updateTaskList = async (taskListId, name) => {
 export const deleteTaskList = async (taskListId) => {
     const res = await fetch(TASKLISTS_URL + '/' + taskListId, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskListId })
     })
     if (!res.ok) throw new Error('Something went wrong.')
-    return taskListId
+    return res.json()
 }

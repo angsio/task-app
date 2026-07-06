@@ -1,2 +1,2 @@
 export { getTaskLists, createTaskList, updateTaskList, deleteTaskList } from './taskLists'
-export { createTask } from './tasks'
+export { createTask, updateTask, deleteTask } from './tasks'

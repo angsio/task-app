@@ -15,8 +15,8 @@ export const TaskLists = () => {
         setData((current) => current.map(task => task._id === updated._id ? updated : task))
     }
 
-    const handleTaskListDeleted = (id) => {
-        setData(current => current.filter(task => task._id !== id))
+    const handleTaskListDeleted = (deleted) => {
+        setData(current => current.filter(task => task._id !== deleted._id))
     }
 
     return (

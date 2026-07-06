@@ -73,7 +73,7 @@ app.delete('/api/tasklists/:id', async (req, res) => {
     try {
         const taskList = await TaskList.findByIdAndDelete(req.params.id)
         if (!taskList) return res.status(404).json({ error: 'Tasklist not found.' })
-        res.status(204).end()
+        res.json(taskList)
     }
     catch (error) {
         console.error('Failed to delete tasklist:', error)
@@ -127,8 +127,8 @@ app.patch('/api/tasklists/:id/tasks/:taskId', async (req, res) => {
         const task = taskList.tasks.id(req.params.taskId)
         if (!task) return res.status(404).json({ error: 'Task not found.' })
 
-        if (req.body.name !== undefined) task.name = req.body.name
-        if (req.body.completed !== undefined) task.completed = req.body.completed
+        if (req.body.name) task.name = req.body.name
+        if (req.body.completed) task.completed = req.body.completed
 
         await taskList.save()
         res.json(taskList)
@@ -151,7 +151,7 @@ app.delete('/api/tasklists/:id/tasks/:taskId', async (req, res) => {
 
         taskList.tasks.pull(req.params.taskId)
         await taskList.save()
-        res.status(204).end()
+        res.json(taskList)
     }
     catch (error) {
         console.error('Failed to delete task:', error)

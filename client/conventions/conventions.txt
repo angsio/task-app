@@ -56,15 +56,19 @@ They're guidelines for judgment calls, not syntax the linter enforces.
    Keeping hooks/ generic means it never has to change as api/ grows.
 
    GOTCHA: useFetch's effect depends on the function reference
-   ([asyncFn]). A module-level function (`getTasks`) is stable across
-   renders automatically. An inline arrow function written inside a
-   component body (`() => getTasksForList(id)`) is a NEW function
-   object every render, which retriggers the effect every render,
-   which causes an infinite fetch loop. Any time the function needs to
-   close over a prop or piece of state, wrap it in useCallback with
-   that value in the dependency array:
-       const fetchTasks = useCallback(() => getTasksForList(id), [id])
-       const { data } = useFetch(fetchTasks)
+   ([asyncFn]). A module-level function (`getTaskLists`) is stable
+   across renders automatically. An inline arrow function written
+   inside a component body (`() => getSomethingById(id)`) is a NEW
+   function object every render, which retriggers the effect every
+   render, which causes an infinite fetch loop. (Not currently hit in
+   this app — the only useFetch call passes the stable module-level
+   `getTaskLists`, and tasks aren't fetched separately, they arrive
+   embedded in their parent tasklist.) If you ever DO need to fetch
+   with an argument that closes over a prop/state, either pass an
+   explicit deps array (useFetch's 2nd arg) or wrap the function in
+   useCallback with that value in its dependency array:
+       const fetchThing = useCallback(() => getThingById(id), [id])
+       const { data } = useFetch(fetchThing)
 
 
 4. GENERIC COMPONENTS MUST STAY DUMB ABOUT LAYOUT
@@ -158,9 +162,13 @@ They're guidelines for judgment calls, not syntax the linter enforces.
                           component needs the moment it appears.
               useSubmit - runs only when explicitly called
                           (`submit(...args)`), tracks its own
-                          `submitting`/`error`, returns the result or
-                          `undefined` on failure (callers never need
-                          try/catch). For anything a user triggers.
+                          `loading`, returns the result or `undefined`
+                          on failure (callers never need try/catch).
+                          It does NOT expose an `error` — failures are
+                          reported to the app-wide notifications sink
+                          from inside its own catch block (see section
+                          12), so no caller surfaces mutation errors
+                          itself. For anything a user triggers.
    This is NOT about GET vs POST/PATCH/DELETE. useSubmit is equally
    correct for a create, an update, or a delete — the HTTP verb lives
    inside whichever api/ function you pass it, the hook never knows
@@ -262,15 +270,16 @@ They're guidelines for judgment calls, not syntax the linter enforces.
     coordinator this succeeded" callbacks (e.g. `onTaskListDeleted`),
     never the mutation itself and never raw fetched data. The
     component that triggers an action still owns its own useSubmit
-    call and its own loading/error locally (TaskListCard calls
-    useSubmit(deleteTaskList) itself, so it can show its own pending/
-    error state) — it only reaches into context once its own action
-    has already succeeded, to tell the coordinator to update shared
-    data. Data that's specific to one item (like which taskList a
-    card represents) still flows down normally through the render-prop
-    that's already iterating that item — Context doesn't replace that,
-    it only replaces cross-cutting callbacks that would otherwise be
-    threaded through components with no use for them.
+    call and its own loading locally (TaskListCard calls
+    useSubmit(deleteTaskList) itself, so it can show its own pending
+    state) — it only reaches into context once its own action has
+    already succeeded, to tell the coordinator to update shared data.
+    (Errors are NOT local — they converge to the global notifications
+    sink, section 12.) Data that's specific to one item (like which
+    taskList a card represents) still flows down normally through the
+    render-prop that's already iterating that item — Context doesn't
+    replace that, it only replaces cross-cutting callbacks that would
+    otherwise be threaded through components with no use for them.
 
     Where it lives: TaskListsContext.js sits in the same
     features/tasklists/ folder as everything else it coordinates —
@@ -280,3 +289,84 @@ They're guidelines for judgment calls, not syntax the linter enforces.
     node owns the shared thing, descendants only ever read their slice
     of it — Context is a different mechanism for that read, not a
     different owner.
+
+
+11. EVERY SERVER WRITE RETURNS THE CANONICAL TOP-LEVEL RESOURCE
+    All mutation endpoints return the affected tasklist as JSON, never
+    204/empty:
+      - create/rename/delete a tasklist -> return that tasklist
+        (delete returns the just-removed doc so the client can drop it
+        by _id).
+      - create/patch/delete a TASK -> return the PARENT tasklist
+        (tasks are embedded, so the tasklist is the canonical
+        top-level resource; the client never handles a bare task).
+    Payoff: the client cache has exactly two ops, both keyed by _id —
+    upsert-a-tasklist (covers create, rename, AND every task-level
+    change, since each hands back the whole updated tasklist) and
+    remove-a-tasklist. handleTaskListUpdated is reused verbatim for
+    "renamed a tasklist" and "added a task" precisely because both
+    responses are the same shape. A DELETE that returns 204 breaks
+    this uniformity and forces the client to reconstruct state by
+    hand — don't.
+
+    Client api/ functions mirror this: every mutation returns
+    `res.json()` (the tasklist); coordinator handlers all take a
+    tasklist object (created/updated/deleted alike), never a bare id.
+
+
+12. ERRORS CONVERGE TO ONE APP-WIDE SINK, NOT PER-COMPONENT DISPLAYS
+    There are two kinds of error and they're handled differently on
+    purpose:
+      - FETCH-LOAD failure (useFetch): the view has no data to show,
+        so it renders an inline full-view message (TaskListGrid's
+        "Error: ..."). Stays local to the thing that couldn't load.
+      - MUTATION failure (useSubmit): the view still has its data; the
+        failure is transient ("couldn't delete that"). These converge
+        to a single global sink and surface as a toast.
+
+    The convergence point is useSubmit's own catch block, NOT each
+    handler. Every user-triggered mutation already flows through
+    useSubmit, so reporting there means the branch terminates in ONE
+    place that no new feature can forget to wire — add a mutation,
+    get error reporting for free. This is why useSubmit no longer
+    exposes `error` (section 7): there's nothing for a component to
+    display, because displaying is the sink's job.
+
+    The sink is app-level, not feature-scoped (contrast section 10):
+    errors come from anywhere, so its Provider is mounted in App.jsx
+    above the router, and it lives in its own top-level src/
+    notifications/ folder (generic infrastructure, like routing —
+    knows nothing about tasklists). useSubmit (hooks/) depending on
+    useNotifications is allowed because both are generic; the only
+    cost is that useSubmit now assumes a NotificationsProvider exists
+    above it (it does, at the app root).
+
+    File split note: a stateful Provider component and its
+    context/hook go in SEPARATE files (NotificationsProvider.jsx vs
+    NotificationsContext.js) — react-refresh requires a file to export
+    either components OR non-components, not both. (TaskListsContext.js
+    dodges this only because its "Provider" is a raw Context.Provider
+    re-export, not a component defined in the file.)
+
+
+13. TWO INPUT PRIMITIVES: TextInput (mechanics) + EditableText (toggle)
+    components/TextInput.jsx owns the controlled-input mechanics only:
+    a draft, submit-on-enter/blur, cancel-on-escape, disabled,
+    placeholder. Its onSubmit returns truthy on success / falsy on
+    failure, and it only clears (when clearOnSubmit) on SUCCESS — so a
+    rejected submit keeps the user's typed text instead of wiping it.
+    Used directly for always-present create fields (TaskUtilityBar) or
+    conditionally-mounted create rows (TaskListCard's add-task).
+
+    components/EditableText.jsx is ONLY the display<->edit toggle: it
+    renders a <span> until `active`, then mounts a TextInput. The
+    parent owns `active` and flips it off on success (unmounting the
+    input) but leaves it on for failure (TextInput keeps the draft).
+    Mount/unmount on `active` is what resets the field between edits —
+    no useEffect, no manual clearing.
+
+    Don't fuse these back together: forcing EditableText to always be
+    active with an empty value (the old create-input hack) reintroduced
+    a bug where a failed submit blanked the field, because one
+    component couldn't tell "create, clear on success" from "edit,
+    preserve on failure." Separate lifecycles, separate components.
