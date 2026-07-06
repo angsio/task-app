@@ -127,8 +127,8 @@ app.patch('/api/tasklists/:id/tasks/:taskId', async (req, res) => {
         const task = taskList.tasks.id(req.params.taskId)
         if (!task) return res.status(404).json({ error: 'Task not found.' })
 
-        if (req.body.name) task.name = req.body.name
-        if (req.body.completed) task.completed = req.body.completed
+        if (req.body.name !== null) task.name = req.body.name
+        if (req.body.completed !== null) task.completed = req.body.completed
 
         await taskList.save()
         res.json(taskList)
@@ -149,7 +149,9 @@ app.delete('/api/tasklists/:id/tasks/:taskId', async (req, res) => {
         const taskList = await TaskList.findById(req.params.id)
         if (!taskList) return res.status(404).json({ error: 'Tasklist not found.' })
 
-        taskList.tasks.pull(req.params.taskId)
+        const task = taskList.tasks.pull(req.params.taskId)
+        if (!task) return res.status(404).json({ error: 'Task not found.'})
+        
         await taskList.save()
         res.json(taskList)
     }

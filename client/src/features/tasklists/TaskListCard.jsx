@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { updateTaskList, deleteTaskList, createTask } from '../../api'
-import { useSubmit } from '../../hooks'
+import { useMutation } from '../../hooks'
 import { EditableText, TextInput, List } from '../../components'
 import { useTaskListsContext } from './TaskListsContext'
 import { TaskCard } from './TaskCard'
@@ -10,53 +10,53 @@ export const TaskListCard = ({ taskList }) => {
     const [creatingTaskField, setCreatingTaskField] = useState(false)
 
     // Prepare mutators and render handlers
-    const { submit: submitUpdateTaskList, loading: updatingTaskList } = useSubmit(updateTaskList)
-    const { submit: submitDeleteTaskList, loading: deletingTaskList } = useSubmit(deleteTaskList)
-    const { submit: submitCreateTask, loading: creatingTask } = useSubmit(createTask)
+    const { mutate: updateTaskListMutation, loading: updatingTaskList } = useMutation(updateTaskList)
+    const { mutate: deleteTaskListMutation, loading: deletingTaskList } = useMutation(deleteTaskList)
+    const { mutate: createTaskMutation, loading: creatingTask } = useMutation(createTask)
 
     const { handleTaskListUpdated, handleTaskListDeleted } = useTaskListsContext()
 
-    // Task List Delete Mutation
-    const deleteTaskListMutation = async () => {
-        const deleted = await submitDeleteTaskList(taskList._id)
-        if (!deleted) return false
+    // Click-once command
+    const runDeleteTaskList = async () => {
+        const deletedTaskList = await deleteTaskListMutation(taskList._id)
+        if (!deletedTaskList) return
 
-        handleTaskListDeleted(deleted)
-        return true
+        handleTaskListDeleted(deletedTaskList)
     }
 
-    // Text Primitive Handling
-    const updateTaskListNameSubmit = async (newName) => {
+    // Field: rename task list
+    const submitUpdateTaskListName = async (newName) => {
         if (!newName.trim()) {
             setUpdatingTaskListNameField(false)
             return false
         }
-        
-        const updatedTaskList = await submitUpdateTaskList(taskList._id, newName)
+
+        const updatedTaskList = await updateTaskListMutation(taskList._id, newName)
         if (!updatedTaskList) return false
 
-        handleTaskListUpdated(updated)
+        handleTaskListUpdated(updatedTaskList)
         setUpdatingTaskListNameField(false)
         return true
     }
 
-    const updateTaskListNameCancel = () => setUpdatingTaskListName(false)
+    const cancelUpdateTaskListName = () => setUpdatingTaskListNameField(false)
 
-    const createTaskSubmit = async (name) => {
+    // Field: create task
+    const submitCreateTask = async (name) => {
         if (!name.trim()) {
             setCreatingTaskField(false)
             return false
         }
 
-        const updatedTaskList = await submitCreateTask(taskList._id, name)
+        const updatedTaskList = await createTaskMutation(taskList._id, name)
         if (!updatedTaskList) return false
-        handleTaskListUpdated(updatedTaskList)
 
+        handleTaskListUpdated(updatedTaskList)
         setCreatingTaskField(false)
         return true
     }
 
-    const createTaskCancel = () => setCreatingTaskField(false)
+    const cancelCreateTask = () => setCreatingTaskField(false)
 
     return (
         <div className="flex flex-col w-full border p-4 gap-4">
@@ -64,8 +64,8 @@ export const TaskListCard = ({ taskList }) => {
                 <EditableText
                     value={taskList.name}
                     active={updatingTaskListNameField}
-                    onSubmit={updateTaskListNameSubmit}
-                    onCancel={updateTaskListNameCancel}
+                    onSubmit={submitUpdateTaskListName}
+                    onCancel={cancelUpdateTaskListName}
                     disabled={updatingTaskList || deletingTaskList || creatingTask}
                 />
                 <div className="flex flex-row items-center gap-4">
@@ -82,7 +82,7 @@ export const TaskListCard = ({ taskList }) => {
                     <button 
                         type="button" 
                         className="h-4 w-4 bg-red-600" 
-                        onClick={deleteTaskListMutation}
+                        onClick={runDeleteTaskList}
                     />
                 </div>
             </div>
@@ -94,13 +94,13 @@ export const TaskListCard = ({ taskList }) => {
                         : <></>}
                     keyExtractor={(task) => task._id}
                 >
-                    {(task) => <TaskCard task={task} />}
+                    {(task) => <TaskCard taskListId={taskList._id} task={task} />}
                 </List>
                 {creatingTaskField && (
                     <div className="h-12 w-full flex flex-row items-center justify-between px-4">
                         <TextInput
-                            onSubmit={createTaskSubmit}
-                            onCancel={createTaskCancel}
+                            onSubmit={submitCreateTask}
+                            onCancel={cancelCreateTask}
                             disabled={updatingTaskList || deletingTaskList || creatingTask}
                         />
                     </div>

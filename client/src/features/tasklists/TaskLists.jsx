@@ -8,11 +8,11 @@ export const TaskLists = () => {
     const { data, setData, loading, error } = useFetch(getTaskLists)
 
     const handleTaskListCreated = (created) => {
-        setData((current) => [...(current ?? []), created])
+        setData(current => [...(current ?? []), created])
     }
 
     const handleTaskListUpdated = (updated) => {
-        setData((current) => current.map(task => task._id === updated._id ? updated : task))
+        setData(current => current.map(taskList => taskList._id === updated._id ? updated : taskList))
     }
 
     const handleTaskListDeleted = (deleted) => {

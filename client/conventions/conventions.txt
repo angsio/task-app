@@ -160,8 +160,8 @@ They're guidelines for judgment calls, not syntax the linter enforces.
               useFetch  - runs automatically, tied to mount / to a
                           `deps` array changing. For anything the
                           component needs the moment it appears.
-              useSubmit - runs only when explicitly called
-                          (`submit(...args)`), tracks its own
+              useMutation - runs only when explicitly called
+                          (`mutate(...args)`), tracks its own
                           `loading`, returns the result or `undefined`
                           on failure (callers never need try/catch).
                           It does NOT expose an `error` — failures are
@@ -169,14 +169,33 @@ They're guidelines for judgment calls, not syntax the linter enforces.
                           from inside its own catch block (see section
                           12), so no caller surfaces mutation errors
                           itself. For anything a user triggers.
-   This is NOT about GET vs POST/PATCH/DELETE. useSubmit is equally
+   useFetch/useMutation are the read/write pair (the useQuery/
+   useMutation vocabulary from React Query & SWR): query = automatic
+   read, mutation = imperative write.
+   This is NOT about GET vs POST/PATCH/DELETE. useMutation is equally
    correct for a create, an update, or a delete — the HTTP verb lives
    inside whichever api/ function you pass it, the hook never knows
    or cares. Do NOT build usePatch/useRemove/useCreate — they would
-   be byte-for-byte identical to useSubmit, differing only in name,
+   be byte-for-byte identical to useMutation, differing only in name,
    which means every future bug fix has to be applied N times instead
    of once. If a hook already generalizes over "any function," adding
    a same-shaped hook per verb is pure duplication, not consistency.
+
+   NAMING that flows from this (in a feature component):
+     - the mutation trigger you extract from the hook is aliased
+       `<operation>Mutation` (const { mutate: deleteTaskListMutation }
+       = useMutation(deleteTaskList)) — the raw "click and be done"
+       primitive.
+     - a component handler that WRAPS a trigger is named by the UI
+       interaction that fires it:
+         field-backed op (has a text field, two terminal states):
+           `submit<X>` / `cancel<X>`  (submitUpdateTaskListName,
+           cancelUpdateTaskListName) — verb-first.
+         click-once command (one button, no cancel):
+           `run<X>`  (runDeleteTaskList).
+     - `handle<X>` is RESERVED for the coordinator's cache-update
+       callbacks passed through context (handleTaskListUpdated), so it
+       never collides with a component's own interaction handlers.
 
 
 8. EVERY FEATURE HAS EXACTLY ONE COORDINATOR
@@ -269,9 +288,9 @@ They're guidelines for judgment calls, not syntax the linter enforces.
     Shape it narrowly: Context carries only the "notify the
     coordinator this succeeded" callbacks (e.g. `onTaskListDeleted`),
     never the mutation itself and never raw fetched data. The
-    component that triggers an action still owns its own useSubmit
+    component that triggers an action still owns its own useMutation
     call and its own loading locally (TaskListCard calls
-    useSubmit(deleteTaskList) itself, so it can show its own pending
+    useMutation(deleteTaskList) itself, so it can show its own pending
     state) — it only reaches into context once its own action has
     already succeeded, to tell the coordinator to update shared data.
     (Errors are NOT local — they converge to the global notifications
@@ -320,15 +339,15 @@ They're guidelines for judgment calls, not syntax the linter enforces.
       - FETCH-LOAD failure (useFetch): the view has no data to show,
         so it renders an inline full-view message (TaskListGrid's
         "Error: ..."). Stays local to the thing that couldn't load.
-      - MUTATION failure (useSubmit): the view still has its data; the
+      - MUTATION failure (useMutation): the view still has its data; the
         failure is transient ("couldn't delete that"). These converge
         to a single global sink and surface as a toast.
 
-    The convergence point is useSubmit's own catch block, NOT each
+    The convergence point is useMutation's own catch block, NOT each
     handler. Every user-triggered mutation already flows through
-    useSubmit, so reporting there means the branch terminates in ONE
+    useMutation, so reporting there means the branch terminates in ONE
     place that no new feature can forget to wire — add a mutation,
-    get error reporting for free. This is why useSubmit no longer
+    get error reporting for free. This is why useMutation no longer
     exposes `error` (section 7): there's nothing for a component to
     display, because displaying is the sink's job.
 
@@ -336,9 +355,9 @@ They're guidelines for judgment calls, not syntax the linter enforces.
     errors come from anywhere, so its Provider is mounted in App.jsx
     above the router, and it lives in its own top-level src/
     notifications/ folder (generic infrastructure, like routing —
-    knows nothing about tasklists). useSubmit (hooks/) depending on
+    knows nothing about tasklists). useMutation (hooks/) depending on
     useNotifications is allowed because both are generic; the only
-    cost is that useSubmit now assumes a NotificationsProvider exists
+    cost is that useMutation now assumes a NotificationsProvider exists
     above it (it does, at the app root).
 
     File split note: a stateful Provider component and its

@@ -1,2 +1,2 @@
 export { useFetch } from './useFetch'
-export { useSubmit } from './useSubmit'
+export { useMutation } from './useMutation'
