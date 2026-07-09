@@ -1,2 +1,2 @@
-export { getTaskLists, createTaskList, updateTaskList, deleteTaskList } from './taskLists'
-export { getTasks, createTask, updateTask, deleteTask } from './tasks'
+export { getThemes, createTheme, updateTheme, deleteTheme } from './themes'
+export { getItems, createItem, updateItem, deleteItem } from './items'
