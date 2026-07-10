@@ -14,7 +14,7 @@ router.get('/', async (req, res) => {
         if (req.query.itemType) filter.itemType = req.query.itemType
 
         const items = await Item.find(filter)
-        res.json(items)
+        res.status(200).json(items)
     } catch (error) {
         handleError(res, error)
     }
@@ -38,7 +38,7 @@ router.patch('/:id', async (req, res) => {
         if (!item) throw new ApiError(404, 'Item not found.')
         item.set(req.body)
         await item.save()
-        res.json(item)
+        res.status(200).json(item)
     } catch (error) {
         handleError(res, error)
     }
@@ -48,7 +48,7 @@ router.delete('/:id', async (req, res) => {
     try {
         const item = await Item.findByIdAndDelete(req.params.id)
         if (!item) throw new ApiError(404, 'Item not found.')
-        res.json(item)
+        res.status(200).json(item)
     } catch (error) {
         handleError(res, error)
     }

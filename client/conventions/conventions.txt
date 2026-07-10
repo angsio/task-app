@@ -1,391 +1,271 @@
 FRONTEND CONVENTIONS — task-app client
-These are self-imposed rules distilled from working through this codebase.
-They're guidelines for judgment calls, not syntax the linter enforces.
+
+These are guidelines, not law. They exist for one reason: so that adding the
+next feature is copying an existing shape, never inventing a new one. That is
+the whole test for whether a rule belongs here — does it make the code scale?
+If a rule ever stops being true of the code, DELETE it or amend it; a
+convention that lies is worse than no convention (the previous version of this
+file outlived the data model it described and had to be torn out). Read this
+alongside pattern.md (how the code is wired, both sides of the HTTP barrier)
+and app_info.md (what the app is for the user).
 
 
-1. EXPORTS
-   Named exports only, everywhere. No `export default`.
-   Every folder that groups related files gets an index.js barrel that
-   re-exports them, e.g. `export { Navbar } from './Navbar'`.
-   Why: consistent import style (`import { X } from '../y'` everywhere),
-   and renaming a file never silently breaks an anonymous default import.
+0. THE THROUGH-LINE
+   One symmetric pattern, repeated. Two resources (themes, items), four CRUD
+   verbs each, both sides of the barrier — all share one skeleton. Deviations
+   must be justified out loud, never improvised. Everything below is a specific
+   application of this.
 
 
-2. FOLDER LAYERS AND WHO CAN DEPEND ON WHOM
-
-   components/  hooks/  api/     <- bottom layer, no knowledge of each other
-         |         |       |        or of anything above them
-         +---------+-------+
-                   v
-              features/            <- combines the bottom layer into one
-                   v                  real domain concept (e.g. "tasklists")
-               pages/               <- arranges one or more features into
-                   v                   a screen
-              layouts/  (parallel)  <- generic chrome, depends only on
-                   v                   components/
-               routes/              <- wires URL paths to (layout, page)
-                   v                   pairs
-               App.jsx              <- mounts the router
-                   v
-              main.jsx              <- mounts App into the DOM
-
-   Dependencies only flow downward through this list. features/ can import
-   from components/hooks/api. pages/ can import from features/. Nothing
-   at the bottom ever imports from something above it.
-
-   Test for components/ and hooks/: "could this file be copied into an
-   unrelated project and still make sense?" If yes, it belongs there —
-   it must not know what a "task" or a "tasklist" is.
-
-   Test for features/ vs pages/: "does this need domain knowledge (task
-   names, endpoints, specific data shapes)?" If yes, features/. pages/
-   should stay a thin composition of one or more features — no fetching,
-   no domain logic of its own.
+1. EXPORTS & BARRELS
+   Named exports only, everywhere — no `export default`. Every folder that
+   groups related files gets an index.js barrel re-exporting its public surface
+   (`export { Board } from './Board'`). Consistent import style everywhere, and
+   renaming a file never silently breaks an anonymous default import.
 
 
-3. api/ vs hooks/
-   api/   = the only place allowed to know the server contract: endpoint
-            URLs, HTTP methods, request/response shapes. Plain async
-            functions (getTasks, later createTask/deleteTask/...).
-   hooks/ = generic React state orchestration around *any* async
-            operation. useFetch takes a function, not a URL, and has
-            zero knowledge of tasks or endpoints — it would work
-            identically wrapping an unrelated async call.
-   Why the split: a URL-based fetch hook can only ever do "GET on
-   mount." Real apps need create/update/delete, which aren't URL-shaped.
-   Keeping hooks/ generic means it never has to change as api/ grows.
+2. LAYERS, AND WHO MAY DEPEND ON WHOM
+   Dependencies flow one direction only, down this list:
 
-   GOTCHA: useFetch's effect depends on the function reference
-   ([asyncFn]). A module-level function (`getTaskLists`) is stable
-   across renders automatically. An inline arrow function written
-   inside a component body (`() => getSomethingById(id)`) is a NEW
-   function object every render, which retriggers the effect every
-   render, which causes an infinite fetch loop. (Not currently hit in
-   this app — the only useFetch call passes the stable module-level
-   `getTaskLists`, and tasks aren't fetched separately, they arrive
-   embedded in their parent tasklist.) If you ever DO need to fetch
-   with an argument that closes over a prop/state, either pass an
-   explicit deps array (useFetch's 2nd arg) or wrap the function in
-   useCallback with that value in its dependency array:
-       const fetchThing = useCallback(() => getThingById(id), [id])
-       const { data } = useFetch(fetchThing)
+       components/  hooks/  api/     <- shared trifecta: the bottom layer,
+             \        |       /          knows nothing of each other or of
+              \       |      /           anything above. "Could this file be
+               v      v     v            copied into an unrelated project and
+              features/<name>/           still make sense?" If yes it lives
+                     v                    here and must not know what a "theme"
+                  pages/                  or "item" is.
+                     v
+                  layouts/  (parallel to pages/, depends only on components/)
+                     v
+                  routes/               <- wires URL -> (layout, page)
+                     v
+                  App.jsx               <- mounts router + app-wide providers
+                     v
+                  main.jsx              <- mounts App into the DOM
 
+   features/ may import the trifecta. pages/ compose one-or-more features and
+   nothing more — no fetching, no domain logic of their own (BoardPage is one
+   line). A lower layer never imports a higher one.
 
-4. GENERIC COMPONENTS MUST STAY DUMB ABOUT LAYOUT
-   components/List.jsx maps items with keys and nothing else — it does
-   not own a wrapping div, a grid, or any container opinion. That
-   decision belongs to whichever feature is using it, because a
-   generic component may be reused in places that want totally
-   different layouts (e.g. List is reused for a vertical stack of
-   tasks inside a tasklist, not just the 4-column tasklist grid).
-   Corollary: content passed INTO a generic component (like List's
-   `fallback` prop) must be self-sufficient for whatever container it
-   lands in. Don't teach List to special-case "this child is a
-   fallback, treat it differently" — instead make the fallback content
-   itself cooperate, e.g. `<p className="col-span-full ...">` so it
-   spans a grid row regardless of column count, instead of hardcoding
-   a specific column number anywhere.
+   "Everything shared among features" IS the bottom trifecta. A piece shared by
+   only one feature's internals stays private inside that feature's folder; it
+   is not promoted to the trifecta until a second feature needs it.
 
 
-5. ROUTING
-   RouterProvider + createBrowserRouter own "what renders for this
-   URL." Route objects have `path`, `element`, and optionally
-   `children`. A layout is just the `element` of a parent route that
-   renders an <Outlet/> — Outlet is the exact spot where the matching
-   child route's element gets inserted. A layout never imports the
-   pages that render inside it; that decoupling is the whole point —
-   Navbar/Footer stay mounted across navigation, only the Outlet
-   contents swap.
-
-   Name layouts after their Navbar/Footer behavior, not generically
-   ("MainLayout"), since a growing site may have several coexisting at
-   once for different route subtrees:
-       FixedNavbarFixedFooterLayout   - both pinned, inner scroll region
-                                        (used for /tasks — a tool the
-                                        user needs constant nav access to)
-       StickyTopNavbarInlineFooterLayout - navbar sticky, whole page
-                                        scrolls, footer just sits at the
-                                        end of the document (suits a
-                                        content/marketing page, not a
-                                        tool)
+3. api/ vs hooks/ — TWO UNRELATED AXES
+   api/   is the only place allowed to know the server contract: URLs, methods,
+          request/response shapes. Plain async functions that mirror the routes
+          1:1 (getThemes, createItem, ...). request() is their single sink; see
+          pattern.md. To add an endpoint, add one thin function here.
+   hooks/ is generic React state orchestration around ANY async function. It
+          never knows a URL or a resource. It grows along a different axis than
+          api/: not by resource, but by LIFECYCLE SHAPE (section 4).
 
 
-6. CLASSNAME OWNERSHIP (one axis of concern per layer)
-   layouts/   owns viewport occupancy + chrome positioning:
-              h-screen/min-h-screen, overflow-y-auto, fixed positioning
-              relative to the viewport. Never reaches into what's
-              inside Outlet.
-   pages/     owns spacing BETWEEN sibling features on one screen
-              (flex/gap/padding wrapping multiple features). Never
-              touches viewport height or scroll behavior (that's
-              layouts/), never dictates a feature's internal layout
-              (that's features/).
-   features/  owns everything about how its own domain content
-              presents itself (grid columns, card sizing, internal
-              spacing, and how its own children relate to each other
-              while scrolling). Must stay layout-agnostic — no
-              h-screen, no fixed, no assumptions about its container's
-              size. Sizes itself relative to its parent only (w-full,
-              etc.) so it works unchanged inside any layout.
+4. hooks/ IS ORGANIZED BY LIFECYCLE SHAPE, NOT BY VERB
+   There are three hooks and there is a reason for each; do not add a fourth
+   that only renames one of them (no usePatch/useDelete — they would be
+   useMutation with a different label, duplicating every future fix N times).
 
-   Quick test: "would this className still make sense if I swapped
-   what's on the other side of this boundary?" If a feature assumes
-   viewport height, it's leaking a layout concern downward. If a
-   layout hardcodes a grid-column count, it's reaching too far into
-   feature territory.
+     useQuery(asyncFn, deps)   The generic READ. Runs asyncFn on mount and when
+                               deps change. Returns { data, setData, loading,
+                               error }. Has NO opinion about what data is — a
+                               number, an object, a list. Use it directly when
+                               the data is not an _id-keyed list, or you need a
+                               bespoke local update via raw setData.
 
-   `sticky` vs `fixed` is the one nuance worth calling out explicitly:
-   `fixed` pins relative to the *viewport* — using it requires knowing
-   about the whole page, which is exactly the kind of assumption
-   features/ isn't allowed to make, so it stays layout/-only. `sticky`
-   pins relative to an element's *nearest scrolling ancestor*, whatever
-   that happens to be — it never needs to know what that ancestor is,
-   only that one exists, so it works correctly inside any layout
-   without modification. That's why TaskUtilityBar can declare
-   `sticky top-0` on itself (a features/ file) to stay in view above
-   TaskListGrid while it scrolls, without violating layout-agnosticism
-   — it's a decision about how the feature's own children relate to
-   each other, not an assumption about the surrounding page.
+     useMutation(asyncFn)      The generic WRITE. Runs only when you call
+                               mutate(...args). Tracks its own loading. Returns
+                               the result, or null on failure (failures go to
+                               the notifications sink, section 8 — callers never
+                               try/catch). The HTTP verb lives inside the api
+                               function you pass; the hook neither knows nor
+                               cares, so it is equally correct for create,
+                               update, and delete.
 
+     useCollection(fetchFn, deps)  A SPECIALIZATION of useQuery for the common
+                               case: the fetched data is a list of documents
+                               each with _id, kept in sync with the server
+                               LOCALLY (no refetch after a write). It hides raw
+                               setData and exposes the only two cache operations
+                               the app ever needs — upsert(doc) (create OR
+                               update) and remove(doc). It literally contains
+                               useQuery; that is the relationship to understand.
 
-7. hooks/ IS ORGANIZED BY LIFECYCLE SHAPE, NOT BY VERB OR RESOURCE
-   api/ and hooks/ look inconsistent at a glance (api/ has many
-   functions, hooks/ has two) but they're organized along two
-   different, unrelated axes on purpose:
-     api/   axis = resource + server operation. Grows to mirror the
-            Express routes 1:1 (getTaskLists, createTaskList,
-            updateTaskList, deleteTaskList, createTask, ...).
-     hooks/ axis = when the operation runs relative to rendering.
-            There are exactly two shapes, ever:
-              useFetch  - runs automatically, tied to mount / to a
-                          `deps` array changing. For anything the
-                          component needs the moment it appears.
-              useMutation - runs only when explicitly called
-                          (`mutate(...args)`), tracks its own
-                          `loading`, returns the result or `undefined`
-                          on failure (callers never need try/catch).
-                          It does NOT expose an `error` — failures are
-                          reported to the app-wide notifications sink
-                          from inside its own catch block (see section
-                          12), so no caller surfaces mutation errors
-                          itself. For anything a user triggers.
-   useFetch/useMutation are the read/write pair (the useQuery/
-   useMutation vocabulary from React Query & SWR): query = automatic
-   read, mutation = imperative write.
-   This is NOT about GET vs POST/PATCH/DELETE. useMutation is equally
-   correct for a create, an update, or a delete — the HTTP verb lives
-   inside whichever api/ function you pass it, the hook never knows
-   or cares. Do NOT build usePatch/useRemove/useCreate — they would
-   be byte-for-byte identical to useMutation, differing only in name,
-   which means every future bug fix has to be applied N times instead
-   of once. If a hook already generalizes over "any function," adding
-   a same-shaped hook per verb is pure duplication, not consistency.
+   useQuery + useMutation are the read/write pair (the useQuery/useMutation
+   vocabulary of React Query & SWR). useCollection is not a fourth verb — it is
+   useQuery plus the two canonical cache ops, factored out so no feature rewrites
+   them.
 
-   NAMING that flows from this (in a feature component):
-     - the mutation trigger you extract from the hook is aliased
-       `<operation>Mutation` (const { mutate: deleteTaskListMutation }
-       = useMutation(deleteTaskList)) — the raw "click and be done"
-       primitive.
-     - a component handler that WRAPS a trigger is named by the UI
-       interaction that fires it:
-         field-backed op (has a text field, two terminal states):
-           `submit<X>` / `cancel<X>`  (submitUpdateTaskListName,
-           cancelUpdateTaskListName) — verb-first.
-         click-once command (one button, no cancel):
-           `run<X>`  (runDeleteTaskList).
-     - `handle<X>` is RESERVED for the coordinator's cache-update
-       callbacks passed through context (handleTaskListUpdated), so it
-       never collides with a component's own interaction handlers.
+   Known friction: useQuery sets loading synchronously in its effect, which the
+   react-hooks/set-state-in-effect rule flags. For a fetch-on-mount read hook
+   that cascade (loading render -> data render) is the intended behavior, so the
+   rule is suppressed on that one line by design — not worked around elsewhere.
 
 
-8. EVERY FEATURE HAS EXACTLY ONE COORDINATOR
-   Each features/<name>/ folder has one component named after the
-   folder itself (features/tasklists/ -> TaskLists.jsx) that is the
-   feature's only public export from index.js. Everything else in the
-   folder (TaskListGrid, TaskUtilityBar, TaskListCard) is a private
-   implementation detail, reachable only by relative import from
-   inside the folder — never re-exported.
+5. THE CACHE INVARIANT (replaces the old "writes return the parent" rule)
+   Every server write returns the affected TOP-LEVEL resource as JSON, keyed by
+   _id — never 204/empty, never a parent wrapping it. Items are their own
+   top-level documents now (see the models); an item write returns that item,
+   not its theme.
 
-   The coordinator owns whatever data/state the feature's children
-   need to share (e.g. TaskLists.jsx runs useFetch once, hands
-   `data`/`loading`/`error` down to TaskListGrid, and hands a
-   change-handler like `onTaskListCreated` down to TaskUtilityBar
-   that patches `data` directly via `setData` — see section 7, no
-   refetch involved) and passes it down as ordinary props, one level
-   deep.
+   Therefore the client cache is a set of FLAT collections, each keyed by _id,
+   each with exactly two operations: upsert and remove — which is precisely what
+   useCollection provides. A single change is a single document: upsert swaps
+   one entry and every other entry keeps its object identity. This is the fix
+   for the old model, where tasks were embedded and any one task's change forced
+   the whole parent list to be replaced. Never reintroduce a write that returns
+   a container instead of the thing that changed.
 
-   The rule that actually produces low coupling / high cohesion:
-   the coordinator is the only file allowed to know about all of its
-   direct children at once. The children never import each other —
-   TaskListGrid and TaskUtilityBar don't know the other exists, only
-   the shape of the props they're each handed. That's what makes any
-   one of them replaceable or independently reusable without rippling
-   changes into its siblings. (A child can still have its own private
-   sub-children beneath it, like TaskListGrid -> TaskListCard — that's
-   a different, deeper nesting level, not a violation of this rule.)
-
-   This shape repeats at every layer of the app, not just features/:
-   App coordinates the router; routes/ coordinates (layout, page)
-   pairs; a page coordinates one-or-more features; a feature
-   coordinates its own leaf components. Same principle throughout —
-   one node owns the shared thing, its children only ever see their
-   own slice of it.
+   Mirror server side effects in the cache. Deleting a theme cascade-deletes its
+   items on the server; the client must remove those items from the item cache
+   too (ThemeColumn already holds them, so it loops remove over them after
+   removing the theme) — otherwise the cache holds orphans.
 
 
-9. TAILWIND SPACING HAS EXACTLY TWO ROLES — PICK ONE ON PURPOSE,
-   DON'T IMPROVISE A NEW NUMBER PER EDIT
-   Tailwind's numeric scale (1, 2, 3, 4...) is already a consistent
-   system (each step is a fixed rem value everywhere); the mess isn't
-   Tailwind, it's picking a fresh number reactively every time
-   something needs spacing, with no relationship between the choices.
-   The fix is deciding what ROLE a number plays and reusing that same
-   number for that same role everywhere, instead of re-guessing it.
+6. ONE COORDINATOR PER FEATURE
+   Each features/<name>/ has one component named after the folder (Board.jsx),
+   the folder's ONLY public export from index.js. Everything else is private,
+   reachable only by relative import from inside the folder.
 
-   Two roles exist in this app so far:
-     4  = tight internal grouping — spacing between elements that are
-          part of one visual unit (padding inside a TaskListCard, the
-          gap between its header row and its inner tasks box, the gap
-          between grid cells that together form one grid).
-     10 = section/page-level separation — spacing between a whole
-          feature and the edge of its container (TaskUtilityBar's
-          `px-10`, TaskListGrid's `p-10`).
-
-   Before writing a new spacing className, ask "is this tight
-   internal grouping, or section-level separation?" and reuse 4 or 10
-   accordingly. If neither role fits a genuinely new situation, that's
-   when a third role gets *named and added here* — not invented
-   silently in one component and forgotten.
-
-   Applies the same way to sizes that aren't really about spacing
-   between things but about "how big is this fixed-size control" —
-   e.g. TaskListCard's delete button is `h-4 w-4`, deliberately reusing
-   the same "4" as tight-grouping, not a new arbitrary number, since a
-   small fixed control and its surrounding tight spacing read as one
-   consistent scale rather than two unrelated choices.
-
-   Growing containers (like TaskListCard's inner tasks box) get a
-   `min-h-*` floor, not a fixed `h-*` — `min-h-24` here is a deliberate
-   "smallest acceptable empty state" pick, paired with `flex-1` so it
-   claims any extra space its flex parent has (relevant once sibling
-   cards in the same grid row are taller and grid stretches this one
-   to match). Fixed `h-*` on anything meant to grow with future content
-   is a bug, not a style choice — it silently caps growth.
+   The coordinator is the only file allowed to know all of its direct children
+   at once. It owns the shared data (Board runs the two useCollection calls) and
+   hands each child its own slice as ordinary props. Children never import each
+   other, so any one is replaceable without rippling into its siblings. This
+   shape repeats at every layer: App coordinates providers+router; routes
+   coordinate (layout, page); a page coordinates features; a feature coordinates
+   its leaves.
 
 
-10. WHEN A FEATURE OUTGROWS PROPS: A SCOPED CONTEXT, NOT GLOBAL STATE
-    Section 8 said "just use props" for TaskLists' two direct children
-    (TaskUtilityBar, TaskListGrid) — that was correct when neither of
-    them forwarded anything to a level below itself. It stops being
-    correct once a value needs to reach a descendant through an
-    intermediate that doesn't otherwise care about it (TaskListGrid
-    forwarding a delete-callback purely so TaskListCard can call it),
-    especially once more depth is coming on purpose (tasks nested
-    inside each card next). That's the same "many, unpredictable
-    depths, through indifferent intermediates" test from section 6 —
-    when it's met, add a Context scoped to that one feature folder,
-    not a prop threaded through every level.
+7. SCOPED CONTEXT CARRIES CROSS-CUTTING CALLBACKS ONLY
+   When a value must reach a descendant through an intermediate that doesn't
+   care about it (an item's cache op must reach ItemCard through ThemeColumn),
+   use a Context scoped to that one feature folder (BoardContext), created by
+   the coordinator — not global state, not a prop threaded through indifferent
+   levels.
 
-    Shape it narrowly: Context carries only the "notify the
-    coordinator this succeeded" callbacks (e.g. `onTaskListDeleted`),
-    never the mutation itself and never raw fetched data. The
-    component that triggers an action still owns its own useMutation
-    call and its own loading locally (TaskListCard calls
-    useMutation(deleteTaskList) itself, so it can show its own pending
-    state) — it only reaches into context once its own action has
-    already succeeded, to tell the coordinator to update shared data.
-    (Errors are NOT local — they converge to the global notifications
-    sink, section 12.) Data that's specific to one item (like which
-    taskList a card represents) still flows down normally through the
-    render-prop that's already iterating that item — Context doesn't
-    replace that, it only replaces cross-cutting callbacks that would
-    otherwise be threaded through components with no use for them.
+   Shape it narrowly. Context carries only the "this write succeeded, update
+   shared data" callbacks — here the four useCollection ops (upsertTheme,
+   removeTheme, upsertItem, removeItem). It never carries the mutation itself
+   and never the raw fetched data. Each leaf still owns its OWN useMutation and
+   its OWN loading (so it shows its own pending state) and only reaches into
+   context AFTER its write succeeds. Item-specific data (which theme a column
+   is) still flows down as normal props via the render that iterates it.
 
-    Where it lives: TaskListsContext.js sits in the same
-    features/tasklists/ folder as everything else it coordinates —
-    it's still private to that feature (not exported from index.js),
-    and it's still the coordinator (TaskLists.jsx) that creates the
-    Provider and computes the values, consistent with section 8: one
-    node owns the shared thing, descendants only ever read their slice
-    of it — Context is a different mechanism for that read, not a
-    different owner.
+   File split: a stateful Provider component and its context/hook go in separate
+   files (react-refresh forbids a file exporting both components and non-
+   components). BoardContext.js dodges this only because it re-exports a raw
+   Context.Provider rather than defining a Provider component.
 
 
-11. EVERY SERVER WRITE RETURNS THE CANONICAL TOP-LEVEL RESOURCE
-    All mutation endpoints return the affected tasklist as JSON, never
-    204/empty:
-      - create/rename/delete a tasklist -> return that tasklist
-        (delete returns the just-removed doc so the client can drop it
-        by _id).
-      - create/patch/delete a TASK -> return the PARENT tasklist
-        (tasks are embedded, so the tasklist is the canonical
-        top-level resource; the client never handles a bare task).
-    Payoff: the client cache has exactly two ops, both keyed by _id —
-    upsert-a-tasklist (covers create, rename, AND every task-level
-    change, since each hands back the whole updated tasklist) and
-    remove-a-tasklist. handleTaskListUpdated is reused verbatim for
-    "renamed a tasklist" and "added a task" precisely because both
-    responses are the same shape. A DELETE that returns 204 breaks
-    this uniformity and forces the client to reconstruct state by
-    hand — don't.
-
-    Client api/ functions mirror this: every mutation returns
-    `res.json()` (the tasklist); coordinator handlers all take a
-    tasklist object (created/updated/deleted alike), never a bare id.
+8. ERRORS CONVERGE TO ONE APP-WIDE SINK
+   Two kinds, handled differently on purpose:
+     - READ-load failure (useQuery/useCollection): the view has no data, so it
+       renders an inline message where the data would be (Board's "Error: ...").
+     - WRITE failure (useMutation): the view still has its data; the failure is
+       transient. These converge to ONE global sink and surface as a toast.
+   The convergence point is useMutation's own catch block, not each handler —
+   every write already flows through it, so a new feature gets error reporting
+   for free and cannot forget to wire it. This is why useMutation exposes no
+   `error`: there is nothing for a component to display. The sink is app-level
+   (notifications/, mounted in App.jsx above the router), generic like routing.
 
 
-12. ERRORS CONVERGE TO ONE APP-WIDE SINK, NOT PER-COMPONENT DISPLAYS
-    There are two kinds of error and they're handled differently on
-    purpose:
-      - FETCH-LOAD failure (useFetch): the view has no data to show,
-        so it renders an inline full-view message (TaskListGrid's
-        "Error: ..."). Stays local to the thing that couldn't load.
-      - MUTATION failure (useMutation): the view still has its data; the
-        failure is transient ("couldn't delete that"). These converge
-        to a single global sink and surface as a toast.
+9. POLYMORPHISM VIA AN itemType REGISTRY
+   Items are one collection split by a discriminator (itemType: Task/Event/
+   Reminder). The frontend mirrors the backend's MODELS = { Task, Event,
+   Reminder } lookup with its own lookup, never a switch scattered around:
 
-    The convergence point is useMutation's own catch block, NOT each
-    handler. Every user-triggered mutation already flows through
-    useMutation, so reporting there means the branch terminates in ONE
-    place that no new feature can forget to wire — add a mutation,
-    get error reporting for free. This is why useMutation no longer
-    exposes `error` (section 7): there's nothing for a component to
-    display, because displaying is the sink's job.
+     - ItemCard is a SHARED SHELL: the parts identical for every item type
+       (rename the title, delete the item — same endpoints for all) are written
+       once, here.
+     - ITEM_CONTENT = { Task: TaskContent, ... } maps itemType to the small
+       component rendering only what that type adds (a Task's completed toggle,
+       an Event's span). ItemCard looks up ITEM_CONTENT[item.itemType] and
+       renders it, with a fallback for an unknown type (mirroring the backend's
+       ApiError on an unknown type).
 
-    The sink is app-level, not feature-scoped (contrast section 10):
-    errors come from anywhere, so its Provider is mounted in App.jsx
-    above the router, and it lives in its own top-level src/
-    notifications/ folder (generic infrastructure, like routing —
-    knows nothing about tasklists). useMutation (hooks/) depending on
-    useNotifications is allowed because both are generic; the only
-    cost is that useMutation now assumes a NotificationsProvider exists
-    above it (it does, at the app root).
-
-    File split note: a stateful Provider component and its
-    context/hook go in SEPARATE files (NotificationsProvider.jsx vs
-    NotificationsContext.js) — react-refresh requires a file to export
-    either components OR non-components, not both. (TaskListsContext.js
-    dodges this only because its "Provider" is a raw Context.Provider
-    re-export, not a component defined in the file.)
+   Adding a fourth item type is purely additive: a discriminator on the server,
+   one *Content component, one registry line — nothing else changes. A future
+   view (the Schedule) renders items its own way (positioned time-blocks, not
+   cards); it does not import Board's components. What is shared between views is
+   the trifecta + this registry PATTERN, not the components themselves.
 
 
-13. TWO INPUT PRIMITIVES: TextInput (mechanics) + EditableText (toggle)
-    components/TextInput.jsx owns the controlled-input mechanics only:
-    a draft, submit-on-enter/blur, cancel-on-escape, disabled,
-    placeholder. Its onSubmit returns truthy on success / falsy on
-    failure, and it only clears (when clearOnSubmit) on SUCCESS — so a
-    rejected submit keeps the user's typed text instead of wiping it.
-    Used directly for always-present create fields (TaskUtilityBar) or
-    conditionally-mounted create rows (TaskListCard's add-task).
+10. GENERIC COMPONENTS STAY DUMB ABOUT DOMAIN AND LAYOUT
+    components/ files may not know what a theme or item is, and may not own a
+    container opinion. List maps items with keys and renders a fallback when
+    empty — it owns no grid, no wrapping div; the feature using it decides
+    layout. Content passed into a generic component (List's `fallback`) must be
+    self-sufficient for wherever it lands. If a "generic" component needs to know
+    about a domain concept, it belongs in a feature, not in components/.
 
-    components/EditableText.jsx is ONLY the display<->edit toggle: it
-    renders a <span> until `active`, then mounts a TextInput. The
-    parent owns `active` and flips it off on success (unmounting the
-    input) but leaves it on for failure (TextInput keeps the draft).
-    Mount/unmount on `active` is what resets the field between edits —
-    no useEffect, no manual clearing.
 
-    Don't fuse these back together: forcing EditableText to always be
-    active with an empty value (the old create-input hack) reintroduced
-    a bug where a failed submit blanked the field, because one
-    component couldn't tell "create, clear on success" from "edit,
-    preserve on failure." Separate lifecycles, separate components.
+11. TWO INPUT PRIMITIVES
+    TextInput owns controlled-input mechanics only: a draft, submit-on-enter/
+    blur, cancel-on-escape, and clear-on-success (a rejected submit keeps the
+    user's text). Used directly for always-present create fields (CreateTheme,
+    CreateItem).
+    EditableText is ONLY the display<->edit toggle: a <span> until `active`, then
+    a TextInput. The parent owns `active` and flips it off on success (unmounting
+    the field, which resets it) but leaves it on for failure. Don't fuse them —
+    separate lifecycles, separate components.
+
+
+12. NAMING THAT FLOWS FROM THE ABOVE
+    - api function: <verb><Resource> mirroring the route (createItem).
+    - the mutation trigger from a hook is aliased <operation>Mutation
+      (const { mutate: deleteThemeMutation } = useMutation(deleteTheme)).
+    - a leaf's handler wrapping that trigger is named by the UI interaction:
+        field-backed op (a text field, two outcomes): submit<X> / cancel<X>
+          (submitRenameTheme, cancelRenameTheme).
+        click-once command (one button, no cancel): run<X> (runDeleteTheme,
+          runToggleCompleted).
+    - the coordinator's cache callbacks are the useCollection ops themselves,
+      named upsert<Resource> / remove<Resource>. (The old handle<X> cache
+      callbacks are gone — useCollection replaced the hand-written triplet.)
+
+
+13. CLASSNAME OWNERSHIP — ONE AXIS PER LAYER
+    layouts/  own viewport occupancy + chrome positioning: h-screen, overflow,
+              fixed relative to the viewport. Never reach inside the Outlet.
+    pages/    own spacing BETWEEN sibling features on a screen. Never touch
+              viewport height/scroll, never a feature's internal layout.
+    features/ own everything about how their own content presents: columns, card
+              sizing, internal spacing. Must stay layout-agnostic — no h-screen,
+              no fixed, no assumption about container size; size relative to the
+              parent (w-full, etc.). `sticky` is allowed inside a feature
+              (pins to whatever the scrolling ancestor is); `fixed` is not (it
+              assumes the viewport — a layout concern).
+    Test: "would this className still make sense if I swapped what's on the other
+    side of the boundary?"
+
+
+14. SPACING HAS NAMED ROLES — REUSE, DON'T RE-GUESS
+    Tailwind's scale is already consistent; the mess comes from picking a fresh
+    number per edit. Pick a ROLE and reuse its number everywhere:
+      4  = tight internal grouping (padding inside a card/column, gaps between
+           elements of one unit, and small fixed controls like an h-4 w-4 button
+           — deliberately the same 4 so control size and its spacing read as one
+           scale).
+      10 = section/page-level separation (a feature's padding against its
+           container edge, p-10 on the board).
+    Before writing a new spacing class, ask "tight grouping or section
+    separation?" and reuse 4 or 10. If a genuinely new situation fits neither,
+    NAME a third role here — don't invent a silent one-off. Anything meant to
+    grow gets a min-h-* floor with flex-1, never a fixed h-* that caps it.
+
+
+15. COLOUR HAS NAMED ROLES TOO (and styling is deliberately minimal for now)
+    The app is intentionally unstyled beyond div colours: colours exist ONLY to
+    make component placement and nesting legible before any aesthetic pass. No
+    borders, shadows, rounding, typography — just background colours by role and
+    the placement classes of sections 13-14. Same discipline as spacing: reuse a
+    colour for a role, don't pick a new one per component.
+      structural nesting (light -> dark as you go deeper): board bg-slate-100,
+        a theme column bg-slate-300, an item card bg-slate-50, the create-theme
+        column bg-slate-200. The chrome (navbar/footer) keeps its own hue.
+      action buttons by verb: create = green, delete = red, edit/rename =
+        slate-500, a toggle = slate-500 (on) / slate-200 (off).
+    When real styling begins, it replaces this palette wholesale; until then,
+    adding anything decorative is noise that hides placement.

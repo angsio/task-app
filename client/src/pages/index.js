@@ -1,1 +1,1 @@
-export { TasksPage } from './TasksPage'
+export { BoardPage } from './BoardPage'

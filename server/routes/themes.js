@@ -8,7 +8,7 @@ const router = express.Router()
 router.get('/', async (req, res) => {
     try {
         const themes = await Theme.find({})
-        res.json(themes)
+        res.status(200).json(themes)
     } catch (error) {
         handleError(res, error)
     }
@@ -29,7 +29,7 @@ router.patch('/:id', async (req, res) => {
         if (!theme) throw new ApiError(404, 'Theme not found.')
         theme.set(req.body)
         await theme.save()
-        res.json(theme)
+        res.status(200).json(theme)
     } catch (error) {
         handleError(res, error)
     }
@@ -40,7 +40,7 @@ router.delete('/:id', async (req, res) => {
         const theme = await Theme.findByIdAndDelete(req.params.id)
         if (!theme) throw new ApiError(404, 'Theme not found.')
         await Item.deleteMany({ theme: theme._id })
-        res.json(theme)
+        res.status(200).json(theme)
     } catch (error) {
         handleError(res, error)
     }
