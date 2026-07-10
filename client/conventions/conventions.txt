@@ -171,45 +171,82 @@ and app_info.md (what the app is for the user).
    (notifications/, mounted in App.jsx above the router), generic like routing.
 
 
-9. POLYMORPHISM VIA AN itemType REGISTRY
+9. POLYMORPHISM VIA ONE itemType REGISTRY
    Items are one collection split by a discriminator (itemType: Task/Event/
    Reminder). The frontend mirrors the backend's MODELS = { Task, Event,
-   Reminder } lookup with its own lookup, never a switch scattered around:
+   Reminder } lookup with ONE registry, itemTypes.js, never a switch scattered
+   around. Each entry describes everything type-specific in up to three slots:
 
-     - ItemCard is a SHARED SHELL: the parts identical for every item type
-       (rename the title, delete the item — same endpoints for all) are written
-       once, here.
-     - ITEM_CONTENT = { Task: TaskContent, ... } maps itemType to the small
-       component rendering only what that type adds (a Task's completed toggle,
-       an Event's span). ItemCard looks up ITEM_CONTENT[item.itemType] and
-       renders it, with a fallback for an unknown type (mirroring the backend's
-       ApiError on an unknown type).
+     ITEM_TYPES = {
+       Task:     { Action: TaskAction },
+       Event:    { Fields: EventFields, defaults: () => ({ timeStart, timeEnd }) },
+       Reminder: { Fields: ReminderFields },
+     }
 
-   Adding a fourth item type is purely additive: a discriminator on the server,
-   one *Content component, one registry line — nothing else changes. A future
-   view (the Schedule) renders items its own way (positioned time-blocks, not
-   cards); it does not import Board's components. What is shared between views is
-   the trifecta + this registry PATTERN, not the components themselves.
+     - Action    = an interactive CONTROL that joins the card's button cluster
+                   (a Task's completed toggle). Controls group with rename/delete.
+     - Fields    = DATA inputs shown in the card body (an Event's two datetime
+                   inputs, a Reminder's one). Data sits below the title row.
+     - defaults() = the extra creation payload a type needs so a title-only
+                   create still validates server-side (an Event requires
+                   timeStart/timeEnd, so it seeds them; Task/Reminder need none).
+
+   ItemCard is the SHARED SHELL: rename + delete (identical for every type) are
+   written once; it reads ITEM_TYPES[item.itemType] and drops that type's Action
+   into the button cluster and its Fields into the body. CreateItem reads the
+   SAME registry for its <select> options (Object.keys) and its create defaults —
+   one source of truth per type.
+
+   Adding a fourth item type is purely additive: a server discriminator, its
+   small Action/Fields components, one registry entry — nothing else changes. A
+   future view (the Schedule) renders items its own way (positioned time-blocks,
+   not cards); it does not import Board's components. What is shared between views
+   is the trifecta + this registry PATTERN, not the components themselves.
 
 
-10. GENERIC COMPONENTS STAY DUMB ABOUT DOMAIN AND LAYOUT
-    components/ files may not know what a theme or item is, and may not own a
-    container opinion. List maps items with keys and renders a fallback when
-    empty — it owns no grid, no wrapping div; the feature using it decides
-    layout. Content passed into a generic component (List's `fallback`) must be
-    self-sufficient for wherever it lands. If a "generic" component needs to know
-    about a domain concept, it belongs in a feature, not in components/.
+10. GENERIC COMPONENTS STAY DUMB ABOUT DOMAIN — BUT MAY BE LAYOUT-CONFIGURABLE
+    components/ files may never know what a theme or item is; that line is
+    absolute. Layout is softer: a generic component may own a container as long
+    as the container is driven by ABSTRACT, caller-supplied options, not baked-in
+    assumptions.
+    List is the example. By default (no `direction`) it stays a bare mapper —
+    keyed fragments, no wrapper — and the feature owns layout. But pass it
+    `direction` ('row'|'col'), optional `wrap`, optional `scroll` ('x'|'y'|
+    'both'), a `className` for sizing, and an optional `trailing` node, and it
+    renders the matching flex container itself. This centralizes the recurring
+    "list that overflows" problem (columns wrapping into scrollable rows; items
+    scrolling inside a fixed-height column) in ONE place WITHOUT List learning a
+    single domain word — it still only sees items, keys, and abstract layout. The
+    feature still owns sizing (h-full, flex-1 min-h-0, padding, colour) via
+    className and chooses which overflow style it wants. Content passed in (a
+    `fallback`, a `trailing`) must be self-sufficient for wherever it lands.
 
 
-11. TWO INPUT PRIMITIVES
-    TextInput owns controlled-input mechanics only: a draft, submit-on-enter/
-    blur, cancel-on-escape, and clear-on-success (a rejected submit keeps the
-    user's text). Used directly for always-present create fields (CreateTheme,
-    CreateItem).
-    EditableText is ONLY the display<->edit toggle: a <span> until `active`, then
-    a TextInput. The parent owns `active` and flips it off on success (unmounting
-    the field, which resets it) but leaves it on for failure. Don't fuse them —
-    separate lifecycles, separate components.
+11. ONE TEXT PRIMITIVE: EditableText (rename AND live-create)
+    EditableText is the single controlled-text primitive; there is no separate
+    TextInput anymore. Inactive it renders <span>{value}</span>; active it
+    renders a BARE <input> — no <form>, no submit button — so the caller styles
+    and sizes the box directly via inputClassName (flex-1 in a header row, w-full
+    in a draft). Enter or blur commits (onSubmit(currentValue)); Escape cancels
+    (onCancel). It is uncontrolled (defaultValue + a ref), so it re-seeds from the
+    current value every time it goes active and needs no manual reset.
+
+    The parent owns `active` and decides what commit/cancel MEAN — that is what
+    lets one primitive serve two jobs:
+      - RENAME an existing element: parent holds a `renaming` flag, flips it off
+        on success (input unmounts -> span shows the new value), leaves it on for
+        a server failure (the uncontrolled input keeps the user's text). An empty
+        submit is treated as cancel by the parent's handler.
+      - LIVE-CREATE: the parent renders a draft element (a column/card that looks
+        like the real thing) holding an EditableText that is always `active` with
+        value="". Submit persists + upserts + unmounts the draft; cancel (Escape,
+        or blur while empty) just unmounts it, so it "disappears." autoFocus on
+        mount is the flashing cursor.
+
+    A create is therefore a draft element wearing an active EditableText, not a
+    distinct always-present field — which is exactly why the old two primitives
+    collapsed into one. Don't reintroduce a second input component; if a caller
+    needs a different box, that is what inputClassName is for.
 
 
 12. NAMING THAT FLOWS FROM THE ABOVE
@@ -267,5 +304,11 @@ and app_info.md (what the app is for the user).
         column bg-slate-200. The chrome (navbar/footer) keeps its own hue.
       action buttons by verb: create = green, delete = red, edit/rename =
         slate-500, a toggle = slate-500 (on) / slate-200 (off).
+      an active EditableText input, and any always-present field (the native
+        <select> type-chooser, an Event/Reminder datetime input) = bg-white, so
+        each reads as an editable box against its coloured container.
+    A live-create draft reuses its real element's colour (a draft column slate-300,
+    a draft card slate-50) so the half-made element looks like the thing it is
+    becoming.
     When real styling begins, it replaces this palette wholesale; until then,
     adding anything decorative is noise that hides placement.

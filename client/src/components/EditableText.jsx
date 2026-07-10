@@ -1,20 +1,33 @@
-import { TextInput } from './TextInput'
+import { useRef } from 'react'
 
-// A label that swaps to an editable field while `active`. The parent owns the
-// `active` flag: on a successful submit it flips active off (unmounting the
-// input); on failure it leaves active on, so TextInput keeps the user's draft.
-export const EditableText = ({ value, active, onSubmit, onCancel, disabled, placeholder }) => {
+export const EditableText = ({ value, active, onSubmit, onCancel = () => {}, disabled, placeholder, inputClassName }) => {
+    const inputRef = useRef(null)
+
     if (!active) {
         return <span>{value}</span>
     }
 
+    const commit = () => {
+        if (disabled) return
+        onSubmit(inputRef.current.value)
+    }
+
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') commit()
+        else if (event.key === 'Escape') onCancel()
+    }
+
     return (
-        <TextInput
-            initialValue={value}
-            onSubmit={onSubmit}
-            onCancel={onCancel}
+        <input
+            ref={inputRef}
+            type="text"
+            defaultValue={value}
+            onKeyDown={handleKeyDown}
+            onBlur={commit}
             disabled={disabled}
             placeholder={placeholder}
+            autoFocus
+            className={inputClassName}
         />
     )
 }

@@ -2,7 +2,7 @@ import { updateItem } from '../../api'
 import { useMutation } from '../../hooks'
 import { useBoardContext } from './BoardContext'
 
-export const TaskContent = ({ item }) => {
+export const TaskAction = ({ item }) => {
     const { mutate: updateItemMutation, loading } = useMutation(updateItem)
     const { upsertItem } = useBoardContext()
 

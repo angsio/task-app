@@ -20,21 +20,22 @@ export const Board = () => {
             upsertItem: items.upsert,
             removeItem: items.remove,
         }}>
-            <div className="flex flex-row gap-4 p-10 h-full w-full overflow-x-auto bg-slate-100">
-                <List
-                    items={themes.data}
-                    keyExtractor={theme => theme._id}
-                    fallback={<p>No themes yet.</p>}
-                >
-                    {theme => (
-                        <ThemeColumn
-                            theme={theme}
-                            items={items.data.filter(item => item.theme === theme._id)}
-                        />
-                    )}
-                </List>
-                <CreateTheme />
-            </div>
+            <List
+                items={themes.data}
+                keyExtractor={theme => theme._id}
+                direction="row"
+                wrap
+                scroll="y"
+                trailing={<CreateTheme />}
+                className="h-full w-full content-start gap-4 p-10 bg-slate-100"
+            >
+                {theme => (
+                    <ThemeColumn
+                        theme={theme}
+                        items={items.data.filter(item => item.theme === theme._id)}
+                    />
+                )}
+            </List>
         </BoardProvider>
     )
 }

@@ -17,15 +17,14 @@ export const ThemeColumn = ({ theme, items }) => {
     const submitRenameTheme = async (name) => {
         if (!name.trim()) {
             setRenaming(false)
-            return false
+            return
         }
 
         const updated = await updateThemeMutation(theme._id, { name })
-        if (!updated) return false
+        if (!updated) return
 
         upsertTheme(updated)
         setRenaming(false)
-        return true
     }
 
     const cancelRenameTheme = () => setRenaming(false)
@@ -39,7 +38,7 @@ export const ThemeColumn = ({ theme, items }) => {
     }
 
     return (
-        <div className="flex flex-col gap-4 p-4 w-64 shrink-0 bg-slate-300">
+        <div className="flex flex-col gap-4 p-4 w-64 shrink-0 h-140 bg-slate-300">
             <div className="flex flex-row items-center justify-between gap-4">
                 <EditableText
                     value={theme.name}
@@ -47,6 +46,7 @@ export const ThemeColumn = ({ theme, items }) => {
                     onSubmit={submitRenameTheme}
                     onCancel={cancelRenameTheme}
                     disabled={updatingTheme || deletingTheme}
+                    inputClassName="flex-1 bg-white"
                 />
                 <div className="flex flex-row gap-4">
                     <button
@@ -64,7 +64,9 @@ export const ThemeColumn = ({ theme, items }) => {
             <List
                 items={items}
                 keyExtractor={item => item._id}
-                fallback={<p>No items.</p>}
+                direction="col"
+                scroll="y"
+                className="flex-1 min-h-0 gap-4"
             >
                 {item => <ItemCard item={item} />}
             </List>
