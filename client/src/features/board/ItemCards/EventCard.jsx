@@ -1,11 +1,17 @@
 import { useState } from 'react'
-import { updateItem, deleteItem } from '../../api'
-import { useMutation } from '../../hooks'
-import { EditableText } from '../../components'
-import { useBoardContext } from './BoardContext'
-import { ITEM_TYPES } from './itemTypes'
+import { updateItem, deleteItem } from '../../../api'
+import { useMutation } from '../../../hooks'
+import { EditableText } from '../../../components'
+import { useBoardContext } from '../BoardContext'
 
-export const ItemCard = ({ item }) => {
+const toDateTimeLocal = (value) => {
+    if (!value) return ''
+    const date = new Date(value)
+    const offset = date.getTimezoneOffset() * 60000
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+}
+
+export const EventCard = ({ item }) => {
     const [renaming, setRenaming] = useState(false)
 
     const { mutate: updateItemMutation, loading: updatingItem } = useMutation(updateItem)
@@ -35,7 +41,12 @@ export const ItemCard = ({ item }) => {
         removeItem(deleted)
     }
 
-    const { Action, Fields } = ITEM_TYPES[item.itemType] ?? {}
+    const updateField = async (field, value) => {
+        const updated = await updateItemMutation(item._id, { [field]: value })
+        if (!updated) return
+
+        upsertItem(updated)
+    }
 
     return (
         <div className="h-full w-full flex flex-col gap-4 bg-slate-50">
@@ -59,11 +70,23 @@ export const ItemCard = ({ item }) => {
                         className="h-4 w-4 bg-red-500"
                         onClick={runDeleteItem}
                     />
-                    {Action && <Action item={item} />}
                 </div>
             </div>
-            <div className="flex-1 min-h-0 w-full">
-                {Fields && <Fields item={item} />}
+            <div className="flex-1 min-h-0 w-full flex flex-col gap-4 p-4">
+                <input
+                    type="datetime-local"
+                    className="flex-1 w-full text-center bg-white"
+                    defaultValue={toDateTimeLocal(item.timeStart)}
+                    onChange={(event) => updateField('timeStart', event.target.value)}
+                    disabled={updatingItem}
+                />
+                <input
+                    type="datetime-local"
+                    className="flex-1 w-full text-center bg-white"
+                    defaultValue={toDateTimeLocal(item.timeEnd)}
+                    onChange={(event) => updateField('timeEnd', event.target.value)}
+                    disabled={updatingItem}
+                />
             </div>
         </div>
     )

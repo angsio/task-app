@@ -171,37 +171,31 @@ and app_info.md (what the app is for the user).
    (notifications/, mounted in App.jsx above the router), generic like routing.
 
 
-9. POLYMORPHISM VIA ONE itemType REGISTRY
+9. POLYMORPHISM: ONE EXPLICIT CARD PER itemType (features/board/ItemCards/)
    Items are one collection split by a discriminator (itemType: Task/Event/
-   Reminder). The frontend mirrors the backend's MODELS = { Task, Event,
-   Reminder } lookup with ONE registry, itemTypes.js, never a switch scattered
-   around. Each entry describes everything type-specific in up to three slots:
+   Reminder). The frontend mirrors that with ONE self-contained card component
+   per type — TaskCard, EventCard, ReminderCard, each its own file in ItemCards/.
+   No shared shell, no registry of slots. Each card writes the SAME base
+   explicitly: the h-full card box, the universal top line (title EditableText +
+   rename + delete), then its own body (Task's completed toggle, Event's two
+   datetime inputs, Reminder's one). ThemeColumn dispatches per item with a small
+   map { Task: TaskCard, Event: EventCard, Reminder: ReminderCard } and renders
+   the match.
 
-     ITEM_TYPES = {
-       Task:     { Action: TaskAction },
-       Event:    { Fields: EventFields, defaults: () => ({ timeStart, timeEnd }) },
-       Reminder: { Fields: ReminderFields },
-     }
+   This deliberately trades DRY for readability. The previous single ItemCard +
+   registry ({ Details } slots) split the base and the type body across a shell
+   and a lookup, so understanding one card meant reading three places. Three
+   self-contained cards each read top-to-bottom as one whole thing; the cost is
+   the near-identical base is written three times, and a base change touches all
+   three — accepted on purpose. (Same call as writing toDateTimeLocal into each
+   card that needs it rather than sharing a util.)
 
-     - Action    = an interactive CONTROL that joins the card's button cluster
-                   (a Task's completed toggle). Controls group with rename/delete.
-     - Fields    = DATA inputs shown in the card body (an Event's two datetime
-                   inputs, a Reminder's one). Data sits below the title row.
-     - defaults() = the extra creation payload a type needs so a title-only
-                   create still validates server-side (an Event requires
-                   timeStart/timeEnd, so it seeds them; Task/Reminder need none).
+   Creation lives with CreateItem: it owns its own type list (the <select>
+   options) and per-type creation defaults (Event seeds timeStart/timeEnd,
+   Reminder seeds reminderTime=now, Task none) so a title-only create validates.
 
-   ItemCard is the SHARED SHELL: rename + delete (identical for every type) are
-   written once; it reads ITEM_TYPES[item.itemType] and drops that type's Action
-   into the button cluster and its Fields into the body. CreateItem reads the
-   SAME registry for its <select> options (Object.keys) and its create defaults —
-   one source of truth per type.
-
-   Adding a fourth item type is purely additive: a server discriminator, its
-   small Action/Fields components, one registry entry — nothing else changes. A
-   future view (the Schedule) renders items its own way (positioned time-blocks,
-   not cards); it does not import Board's components. What is shared between views
-   is the trifecta + this registry PATTERN, not the components themselves.
+   Adding a fourth type: one new self-contained card in ItemCards/ (+ its barrel
+   line), one entry in ThemeColumn's map, one entry in CreateItem's list/defaults.
 
 
 10. GENERIC COMPONENTS STAY DUMB ABOUT DOMAIN — BUT MAY BE LAYOUT-CONFIGURABLE

@@ -3,7 +3,20 @@ import { useMutation } from '../../hooks'
 import { createItem } from '../../api'
 import { EditableText } from '../../components'
 import { useBoardContext } from './BoardContext'
-import { ITEM_TYPES } from './itemTypes'
+
+const ITEM_TYPES = ['Task', 'Event', 'Reminder']
+
+const defaultsFor = (type) => {
+    if (type === 'Event') {
+        const start = new Date()
+        const end = new Date(start.getTime() + 60 * 60 * 1000)
+        return { timeStart: start.toISOString(), timeEnd: end.toISOString() }
+    }
+    if (type === 'Reminder') {
+        return { reminderTime: new Date().toISOString() }
+    }
+    return {}
+}
 
 export const CreateItem = ({ themeId }) => {
     const [type, setType] = useState(null)
@@ -17,12 +30,11 @@ export const CreateItem = ({ themeId }) => {
             return
         }
 
-        const { defaults } = ITEM_TYPES[type]
         const created = await createItemMutation({
             itemType: type,
             theme: themeId,
             title,
-            ...(defaults?.() ?? {}),
+            ...defaultsFor(type),
         })
         if (!created) return
 
@@ -55,7 +67,7 @@ export const CreateItem = ({ themeId }) => {
             onChange={(event) => setType(event.target.value)}
         >
             <option value="" disabled>Create new…</option>
-            {Object.keys(ITEM_TYPES).map(name => (
+            {ITEM_TYPES.map(name => (
                 <option key={name} value={name}>{name}</option>
             ))}
         </select>

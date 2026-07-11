@@ -3,8 +3,10 @@ import { updateTheme, deleteTheme } from '../../api'
 import { useMutation } from '../../hooks'
 import { EditableText, List } from '../../components'
 import { useBoardContext } from './BoardContext'
-import { ItemCard } from './ItemCard'
+import { TaskCard, EventCard, ReminderCard } from './ItemCards'
 import { CreateItem } from './CreateItem'
+
+const ITEM_CARDS = { Task: TaskCard, Event: EventCard, Reminder: ReminderCard }
 
 export const ThemeColumn = ({ theme, items }) => {
     const [renaming, setRenaming] = useState(false)
@@ -69,7 +71,10 @@ export const ThemeColumn = ({ theme, items }) => {
                 autoSize="calc((100% - 2rem) / 3)"
                 className="h-8/10 w-full overflow-y-auto gap-4"
             >
-                {item => <ItemCard item={item} />}
+                {item => {
+                    const Card = ITEM_CARDS[item.itemType]
+                    return Card ? <Card item={item} /> : null
+                }}
             </List>
             <div className="h-1/10 w-full flex items-center">
                 <CreateItem themeId={theme._id} />
