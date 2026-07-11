@@ -23,11 +23,11 @@ export const Board = () => {
             <List
                 items={themes.data}
                 keyExtractor={theme => theme._id}
-                direction="row"
-                wrap
-                scroll="y"
+                flow="x"
+                slots={4}
+                autoSize="100%"
                 trailing={<CreateTheme />}
-                className="h-full w-full content-start gap-4 p-10 bg-slate-100"
+                className="h-full w-full overflow-y-auto gap-4 p-4 bg-slate-100"
             >
                 {theme => (
                     <ThemeColumn

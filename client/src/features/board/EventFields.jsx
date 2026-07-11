@@ -15,17 +15,17 @@ export const EventFields = ({ item }) => {
     }
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="h-full w-full flex flex-col gap-4">
             <input
                 type="datetime-local"
-                className="bg-white"
+                className="flex-1 w-full text-center bg-white"
                 defaultValue={toDateTimeLocal(item.timeStart)}
                 onChange={(event) => updateField('timeStart', event.target.value)}
                 disabled={loading}
             />
             <input
                 type="datetime-local"
-                className="bg-white"
+                className="flex-1 w-full text-center bg-white"
                 defaultValue={toDateTimeLocal(item.timeEnd)}
                 onChange={(event) => updateField('timeEnd', event.target.value)}
                 disabled={loading}

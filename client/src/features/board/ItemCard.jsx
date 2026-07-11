@@ -38,8 +38,8 @@ export const ItemCard = ({ item }) => {
     const { Action, Fields } = ITEM_TYPES[item.itemType] ?? {}
 
     return (
-        <div className="flex flex-col gap-4 p-4 bg-slate-50">
-            <div className="flex flex-row items-start justify-between gap-4">
+        <div className="h-full w-full flex flex-col gap-4 bg-slate-50">
+            <div className="w-full flex flex-row items-center justify-between p-4">
                 <EditableText
                     value={item.title}
                     active={renaming}
@@ -48,7 +48,7 @@ export const ItemCard = ({ item }) => {
                     disabled={updatingItem || deletingItem}
                     inputClassName="flex-1 bg-white"
                 />
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-row gap-4">
                     <button
                         type="button"
                         className="h-4 w-4 bg-slate-500"
@@ -62,7 +62,9 @@ export const ItemCard = ({ item }) => {
                     {Action && <Action item={item} />}
                 </div>
             </div>
-            {Fields && <Fields item={item} />}
+            <div className="flex-1 min-h-0 w-full">
+                {Fields && <Fields item={item} />}
+            </div>
         </div>
     )
 }

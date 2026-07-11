@@ -1,30 +1,19 @@
 import { Fragment } from 'react'
 
-const DIRECTION = { row: 'flex-row', col: 'flex-col' }
-const SCROLL = { x: 'overflow-x-auto', y: 'overflow-y-auto', both: 'overflow-auto' }
+const FLOW = { x: 'grid-flow-row', y: 'grid-flow-col' }
 
-export const List = ({ items, keyExtractor, children, fallback = null, direction, wrap, scroll, className = '', trailing }) => {
-    const hasItems = items && items.length > 0
-
-    const rendered = hasItems
-        ? items.map((item, index) => (
-            <Fragment key={keyExtractor(item, index)}>
-                {children(item, index)}
-            </Fragment>
-        ))
-        : null
-
-    if (!direction) {
-        return hasItems ? rendered : fallback
-    }
-
-    const classes = ['flex', DIRECTION[direction], wrap && 'flex-wrap', scroll && SCROLL[scroll], className]
-        .filter(Boolean)
-        .join(' ')
+export const List = ({ items, keyExtractor, children, flow = 'x', slots = 1, autoSize = 'auto', className = '', trailing }) => {
+    const tracks = flow === 'x'
+        ? { gridTemplateColumns: `repeat(${slots}, minmax(0, 1fr))`, gridAutoRows: autoSize }
+        : { gridTemplateRows: `repeat(${slots}, minmax(0, 1fr))`, gridAutoColumns: autoSize }
 
     return (
-        <div className={classes}>
-            {hasItems ? rendered : fallback}
+        <div className={`grid ${FLOW[flow]} ${className}`} style={tracks}>
+            {items?.map((item, index) => (
+                <Fragment key={keyExtractor(item, index)}>
+                    {children(item, index)}
+                </Fragment>
+            ))}
             {trailing}
         </div>
     )

@@ -38,8 +38,8 @@ export const ThemeColumn = ({ theme, items }) => {
     }
 
     return (
-        <div className="flex flex-col gap-4 p-4 w-64 shrink-0 h-140 bg-slate-300">
-            <div className="flex flex-row items-center justify-between gap-4">
+        <div className="h-full w-full flex flex-col gap-4 p-4 bg-slate-300">
+            <div className="h-1/10 w-full flex flex-row items-center justify-between p-4">
                 <EditableText
                     value={theme.name}
                     active={renaming}
@@ -64,13 +64,16 @@ export const ThemeColumn = ({ theme, items }) => {
             <List
                 items={items}
                 keyExtractor={item => item._id}
-                direction="col"
-                scroll="y"
-                className="flex-1 min-h-0 gap-4"
+                flow="x"
+                slots={1}
+                autoSize="calc((100% - 2rem) / 3)"
+                className="h-8/10 w-full overflow-y-auto gap-4"
             >
                 {item => <ItemCard item={item} />}
             </List>
-            <CreateItem themeId={theme._id} />
+            <div className="h-1/10 w-full flex items-center">
+                <CreateItem themeId={theme._id} />
+            </div>
         </div>
     )
 }

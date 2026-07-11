@@ -27,7 +27,7 @@ export const CreateTheme = () => {
 
     if (!creating) {
         return (
-            <div className="flex flex-col gap-4 p-4 w-64 shrink-0 self-start bg-slate-200">
+            <div className="self-start flex flex-col gap-4 p-4 bg-slate-200">
                 <button type="button" className="p-4 bg-green-400" onClick={() => setCreating(true)}>
                     New theme
                 </button>
@@ -36,7 +36,7 @@ export const CreateTheme = () => {
     }
 
     return (
-        <div className="flex flex-col gap-4 p-4 w-64 shrink-0 self-start bg-slate-300">
+        <div className="self-start flex flex-col gap-4 p-4 bg-slate-300">
             <EditableText
                 value=""
                 active

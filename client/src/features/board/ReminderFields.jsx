@@ -17,7 +17,7 @@ export const ReminderFields = ({ item }) => {
     return (
         <input
             type="datetime-local"
-            className="bg-white"
+            className="h-full w-full text-center bg-white"
             defaultValue={toDateTimeLocal(item.reminderTime)}
             onChange={(event) => updateReminderTime(event.target.value)}
             disabled={loading}

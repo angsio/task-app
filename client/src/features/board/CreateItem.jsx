@@ -34,7 +34,7 @@ export const CreateItem = ({ themeId }) => {
 
     if (type) {
         return (
-            <div className="flex flex-col gap-4 p-4 bg-slate-50">
+            <div className="w-full h-full p-4 bg-slate-50">
                 <EditableText
                     value=""
                     active
@@ -42,7 +42,7 @@ export const CreateItem = ({ themeId }) => {
                     onCancel={cancelCreateItem}
                     disabled={loading}
                     placeholder={`New ${type}`}
-                    inputClassName="w-full bg-white"
+                    inputClassName="h-full w-full text-center bg-white"
                 />
             </div>
         )
@@ -50,7 +50,7 @@ export const CreateItem = ({ themeId }) => {
 
     return (
         <select
-            className="bg-white"
+            className="h-full w-full text-center bg-white"
             value=""
             onChange={(event) => setType(event.target.value)}
         >

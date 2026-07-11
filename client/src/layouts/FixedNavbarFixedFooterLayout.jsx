@@ -5,7 +5,7 @@ export const FixedNavbarFixedFooterLayout = () => {
     return (
         <div className="h-screen w-screen flex flex-col">
             <Navbar />
-            <main className="flex-1 w-full overflow-y-auto">
+            <main className="h-9/10 w-full">
                 <Outlet />
             </main>
             <Footer />
