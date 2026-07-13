@@ -11,7 +11,9 @@ export const List = ({ items, keyExtractor, children, flow = 'x', slots = 1, aut
         <div className={`grid ${FLOW[flow]} ${className}`} style={tracks}>
             {items?.map((item, index) => (
                 <Fragment key={keyExtractor(item, index)}>
-                    {children(item, index)}
+                    <div className="p-2">
+                        {children(item, index)}
+                    </div>
                 </Fragment>
             ))}
             {trailing}

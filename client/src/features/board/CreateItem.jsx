@@ -46,7 +46,7 @@ export const CreateItem = ({ themeId }) => {
 
     if (type) {
         return (
-            <div className="w-full h-full p-4 bg-slate-50">
+            <div className="w-full h-full p-4 bg-white">
                 <EditableText
                     value=""
                     active
@@ -66,7 +66,7 @@ export const CreateItem = ({ themeId }) => {
             value=""
             onChange={(event) => setType(event.target.value)}
         >
-            <option value="" disabled>Create new…</option>
+            <option value="" disabled>Create new</option>
             {ITEM_TYPES.map(name => (
                 <option key={name} value={name}>{name}</option>
             ))}

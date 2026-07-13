@@ -27,8 +27,12 @@ export const CreateTheme = () => {
 
     if (!creating) {
         return (
-            <div className="self-start flex flex-col gap-4 p-4 bg-slate-200">
-                <button type="button" className="p-4 bg-green-400" onClick={() => setCreating(true)}>
+            <div className="h-[calc(10%+1rem)] w-full p-4 bg-slate-200">
+                <button 
+                    type="button"
+                    className="h-full w-full bg-green-400"
+                    onClick={() => setCreating(true)}
+                >
                     New theme
                 </button>
             </div>
@@ -36,7 +40,7 @@ export const CreateTheme = () => {
     }
 
     return (
-        <div className="self-start flex flex-col gap-4 p-4 bg-slate-300">
+        <div className="h-[calc(10%+1rem)] w-full p-4 bg-slate-200">
             <EditableText
                 value=""
                 active
@@ -44,7 +48,7 @@ export const CreateTheme = () => {
                 onCancel={cancelCreateTheme}
                 disabled={loading}
                 placeholder="New theme"
-                inputClassName="w-full bg-white"
+                inputClassName="h-full w-full bg-white px-4"
             />
         </div>
     )

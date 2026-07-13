@@ -26,8 +26,13 @@ export const Board = () => {
                 flow="x"
                 slots={4}
                 autoSize="100%"
-                trailing={<CreateTheme />}
-                className="h-full w-full overflow-y-auto gap-4 p-4 bg-slate-100"
+                trailing=
+                {
+                    <div className="p-2">
+                        <CreateTheme />
+                    </div>
+                }
+                className="h-full w-full overflow-y-auto p-2 bg-slate-100"
             >
                 {theme => (
                     <ThemeColumn

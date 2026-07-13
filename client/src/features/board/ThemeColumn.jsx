@@ -40,27 +40,29 @@ export const ThemeColumn = ({ theme, items }) => {
     }
 
     return (
-        <div className="h-full w-full flex flex-col gap-4 p-4 bg-slate-300">
-            <div className="h-1/10 w-full flex flex-row items-center justify-between p-4">
-                <EditableText
-                    value={theme.name}
-                    active={renaming}
-                    onSubmit={submitRenameTheme}
-                    onCancel={cancelRenameTheme}
-                    disabled={updatingTheme || deletingTheme}
-                    inputClassName="flex-1 bg-white"
-                />
-                <div className="flex flex-row gap-4">
-                    <button
-                        type="button"
-                        className="h-4 w-4 bg-slate-500"
-                        onClick={() => setRenaming(true)}
+        <div className="h-full w-full flex flex-col p-2 bg-slate-300">
+            <div className="h-1/10 w-full p-2">
+                <div className="h-full w-full flex flex-row items-center justify-between p-4 bg-slate-50">
+                    <EditableText
+                        value={theme.name}
+                        active={renaming}
+                        onSubmit={submitRenameTheme}
+                        onCancel={cancelRenameTheme}
+                        disabled={updatingTheme || deletingTheme}
+                        inputClassName="bg-white"
                     />
-                    <button
-                        type="button"
-                        className="h-4 w-4 bg-red-500"
-                        onClick={runDeleteTheme}
-                    />
+                    <div className="flex flex-row gap-4">
+                        <button
+                            type="button"
+                            className="h-4 w-4 bg-slate-500"
+                            onClick={() => setRenaming(true)}
+                        />
+                        <button
+                            type="button"
+                            className="h-4 w-4 bg-red-500"
+                            onClick={runDeleteTheme}
+                        />
+                    </div>
                 </div>
             </div>
             <List
@@ -68,15 +70,15 @@ export const ThemeColumn = ({ theme, items }) => {
                 keyExtractor={item => item._id}
                 flow="x"
                 slots={1}
-                autoSize="calc((100% - 2rem) / 3)"
-                className="h-8/10 w-full overflow-y-auto gap-4"
+                autoSize="25%"
+                className="h-8/10 w-full overflow-y-auto"
             >
                 {item => {
                     const Card = ITEM_CARDS[item.itemType]
                     return Card ? <Card item={item} /> : null
                 }}
             </List>
-            <div className="h-1/10 w-full flex items-center">
+            <div className="h-1/10 w-full flex items-center p-2">
                 <CreateItem themeId={theme._id} />
             </div>
         </div>

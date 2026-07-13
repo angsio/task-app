@@ -49,17 +49,20 @@ export const EventCard = ({ item }) => {
     }
 
     return (
-        <div className="h-full w-full flex flex-col gap-4 bg-slate-50">
-            <div className="w-full flex flex-row items-center justify-between p-4">
-                <EditableText
-                    value={item.title}
-                    active={renaming}
-                    onSubmit={submitRenameItem}
-                    onCancel={cancelRenameItem}
-                    disabled={updatingItem || deletingItem}
-                    inputClassName="flex-1 bg-white"
-                />
-                <div className="flex flex-row gap-4">
+        <div className="h-full w-full flex flex-col p-4 bg-white">
+            <div className="h-1/5 w-full flex flex-row items-center justify-between">
+                <div>
+                    <span className="mr-1">Event:</span>
+                    <EditableText
+                        value={item.title}
+                        active={renaming}
+                        onSubmit={submitRenameItem}
+                        onCancel={cancelRenameItem}
+                        disabled={updatingItem || deletingItem}
+                        inputClassName="flex-1 bg-white"
+                    />
+                </div>
+                <div className="flex flex-row ml-4 gap-4">
                     <button
                         type="button"
                         className="h-4 w-4 bg-slate-500"
@@ -72,21 +75,27 @@ export const EventCard = ({ item }) => {
                     />
                 </div>
             </div>
-            <div className="flex-1 min-h-0 w-full flex flex-col gap-4 p-4">
-                <input
-                    type="datetime-local"
-                    className="flex-1 w-full text-center bg-white"
-                    defaultValue={toDateTimeLocal(item.timeStart)}
-                    onChange={(event) => updateField('timeStart', event.target.value)}
-                    disabled={updatingItem}
-                />
-                <input
-                    type="datetime-local"
-                    className="flex-1 w-full text-center bg-white"
-                    defaultValue={toDateTimeLocal(item.timeEnd)}
-                    onChange={(event) => updateField('timeEnd', event.target.value)}
-                    disabled={updatingItem}
-                />
+            <div className="h-4/5 w-full flex flex-col justify-between pt-4 gap-1">
+                <div className="h-1/2 w-full flex flex-row items-center bg-slate-300 pl-4">
+                    <span className="w-1/4">Start:</span>
+                    <input
+                        type="datetime-local"
+                        className="h-full w-3/4 text-center"
+                        defaultValue={toDateTimeLocal(item.timeStart)}
+                        onChange={(event) => updateField('timeStart', event.target.value)}
+                        disabled={updatingItem}
+                    />
+                </div>
+                <div className="h-1/2 w-full flex flex-row items-center bg-slate-300 pl-4">
+                    <span className="w-1/4">End:</span>
+                    <input
+                        type="datetime-local"
+                        className="h-full w-3/4 text-center"
+                        defaultValue={toDateTimeLocal(item.timeEnd)}
+                        onChange={(event) => updateField('timeEnd', event.target.value)}
+                        disabled={updatingItem}
+                    />
+                </div>
             </div>
         </div>
     )

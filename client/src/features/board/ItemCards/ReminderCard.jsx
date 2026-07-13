@@ -49,17 +49,20 @@ export const ReminderCard = ({ item }) => {
     }
 
     return (
-        <div className="h-full w-full flex flex-col gap-4 bg-slate-50">
-            <div className="w-full flex flex-row items-center justify-between p-4">
-                <EditableText
-                    value={item.title}
-                    active={renaming}
-                    onSubmit={submitRenameItem}
-                    onCancel={cancelRenameItem}
-                    disabled={updatingItem || deletingItem}
-                    inputClassName="flex-1 bg-white"
-                />
-                <div className="flex flex-row gap-4">
+        <div className="h-full w-full flex flex-col p-4 bg-white">
+            <div className="h-1/5 w-full flex flex-row items-center justify-between">
+                <div>
+                    <span className="mr-1">Reminder:</span>
+                    <EditableText
+                        value={item.title}
+                        active={renaming}
+                        onSubmit={submitRenameItem}
+                        onCancel={cancelRenameItem}
+                        disabled={updatingItem || deletingItem}
+                        inputClassName="flex-1 bg-white"
+                    />
+                </div>
+                <div className="flex flex-row ml-4 gap-4">
                     <button
                         type="button"
                         className="h-4 w-4 bg-slate-500"
@@ -72,14 +75,17 @@ export const ReminderCard = ({ item }) => {
                     />
                 </div>
             </div>
-            <div className="flex-1 min-h-0 w-full p-4">
-                <input
-                    type="datetime-local"
-                    className="h-full w-full text-center bg-white"
-                    defaultValue={toDateTimeLocal(item.reminderTime)}
-                    onChange={(event) => updateReminderTime(event.target.value)}
-                    disabled={updatingItem}
-                />
+            <div className="h-4/5 w-full flex items-center pt-4">
+                <div className="h-1/2 w-full flex flex-row items-center bg-slate-300 pl-4">
+                    <span className="w-1/4">Time:</span>
+                    <input
+                        type="datetime-local"
+                        className="h-full w-3/4 text-center bg-slate-300"
+                        defaultValue={toDateTimeLocal(item.reminderTime)}
+                        onChange={(event) => updateReminderTime(event.target.value)}
+                        disabled={updatingItem}
+                    />
+                </div>
             </div>
         </div>
     )
