@@ -3,6 +3,7 @@ import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { EditableText } from '../../../components'
 import { useBoardContext } from '../BoardContext'
+import { toDateTimeLocal } from './timeUtils'
 
 export const TaskCard = ({ item }) => {
     const [renaming, setRenaming] = useState(false)
@@ -12,7 +13,7 @@ export const TaskCard = ({ item }) => {
 
     const { upsertItem, removeItem } = useBoardContext()
 
-    const submitRenameItem = async (title) => {
+    const submitRenameTask = async (title) => {
         if (!title.trim()) {
             setRenaming(false)
             return
@@ -25,17 +26,31 @@ export const TaskCard = ({ item }) => {
         setRenaming(false)
     }
 
-    const cancelRenameItem = () => setRenaming(false)
+    const cancelRenameTask = () => setRenaming(false)
 
-    const runDeleteItem = async () => {
+    const runDeleteTask = async () => {
         const deleted = await deleteItemMutation(item._id)
         if (!deleted) return
 
         removeItem(deleted)
     }
 
-    const runToggleCompleted = async () => {
+    const runToggleTaskHasDeadline = async () => {
+        const updated = await updateItemMutation(item._id, { hasDeadline: !item.hasDeadline })
+        if (!updated) return
+
+        upsertItem(updated)
+    }
+
+    const runToggleTaskCompleted = async () => {
         const updated = await updateItemMutation(item._id, { completed: !item.completed })
+        if (!updated) return
+
+        upsertItem(updated)
+    }
+
+    const runUpdateTaskDeadline = async (value) => {
+        const updated = await updateItemMutation(item._id, { deadline: value })
         if (!updated) return
 
         upsertItem(updated)
@@ -49,8 +64,8 @@ export const TaskCard = ({ item }) => {
                     <EditableText
                         value={item.title}
                         active={renaming}
-                        onSubmit={submitRenameItem}
-                        onCancel={cancelRenameItem}
+                        onSubmit={submitRenameTask}
+                        onCancel={cancelRenameTask}
                         disabled={updatingItem || deletingItem}
                         inputClassName="flex-1 bg-white"
                     />
@@ -64,19 +79,44 @@ export const TaskCard = ({ item }) => {
                     <button
                         type="button"
                         className="h-4 w-4 bg-red-500"
-                        onClick={runDeleteItem}
+                        onClick={runDeleteTask}
                     />
                 </div>
             </div>
-            <div className="h-4/5 w-full flex items-end justify-end">
-                <div className="flex items-center">
-                    <span className="mr-1">Completed</span>
-                    <button
-                        type="button"
-                        className={`h-4 w-4 ${item.completed ? 'bg-green-500' : 'bg-green-200'}`}
-                        onClick={runToggleCompleted}
-                        disabled={updatingItem}
-                    />
+            <div className="h-4/5 w-full flex flex-col pt-4">
+                <div className="h-1/2 w-full">
+                    {item.hasDeadline && (
+                        <div className="h-full w-full flex flex-row items-center bg-slate-300 pl-4">
+                            <span className="w-1/4">Time:</span>
+                            <input
+                                type="datetime-local"
+                                className="h-full w-3/4 text-center bg-slate-300"
+                                defaultValue={toDateTimeLocal(item.deadline)}
+                                onChange={event => runUpdateTaskDeadline(event.target.value)}
+                                disabled={updatingItem}
+                            />
+                        </div>
+                    )}
+                </div>
+                <div className="h-1/2 w-full flex items-end gap-4">
+                    <div className="flex items-center">
+                        <button 
+                            type="button"
+                            className={`h-4 w-4 ${item.hasDeadline ? 'bg-orange-500' : 'bg-orange-200'}`}
+                            onClick={runToggleTaskHasDeadline}
+                            disabled={updatingItem}
+                        />
+                        <span className="ml-2">Has Deadline</span>
+                    </div>
+                    <div className="flex items-center">
+                        <button
+                            type="button"
+                            className={`h-4 w-4 ${item.completed ? 'bg-green-500' : 'bg-green-200'}`}
+                            onClick={runToggleTaskCompleted}
+                            disabled={updatingItem}
+                        />
+                        <span className="ml-2">Completed</span>
+                    </div>
                 </div>
             </div>
         </div>

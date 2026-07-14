@@ -15,6 +15,9 @@ const defaultsFor = (type) => {
     if (type === 'Reminder') {
         return { reminderTime: new Date().toISOString() }
     }
+    if (type === 'Task') {
+        return { deadline: new Date().toISOString() }
+    }
     return {}
 }
 

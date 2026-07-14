@@ -3,13 +3,7 @@ import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { EditableText } from '../../../components'
 import { useBoardContext } from '../BoardContext'
-
-const toDateTimeLocal = (value) => {
-    if (!value) return ''
-    const date = new Date(value)
-    const offset = date.getTimezoneOffset() * 60000
-    return new Date(date.getTime() - offset).toISOString().slice(0, 16)
-}
+import { toDateTimeLocal } from './timeUtils'
 
 export const EventCard = ({ item }) => {
     const [renaming, setRenaming] = useState(false)
@@ -19,7 +13,7 @@ export const EventCard = ({ item }) => {
 
     const { upsertItem, removeItem } = useBoardContext()
 
-    const submitRenameItem = async (title) => {
+    const submitRenameEvent = async (title) => {
         if (!title.trim()) {
             setRenaming(false)
             return
@@ -32,16 +26,16 @@ export const EventCard = ({ item }) => {
         setRenaming(false)
     }
 
-    const cancelRenameItem = () => setRenaming(false)
+    const cancelRenameEvent = () => setRenaming(false)
 
-    const runDeleteItem = async () => {
+    const runDeleteEvent = async () => {
         const deleted = await deleteItemMutation(item._id)
         if (!deleted) return
 
         removeItem(deleted)
     }
 
-    const updateField = async (field, value) => {
+    const runUpdateField = async (field, value) => {
         const updated = await updateItemMutation(item._id, { [field]: value })
         if (!updated) return
 
@@ -56,8 +50,8 @@ export const EventCard = ({ item }) => {
                     <EditableText
                         value={item.title}
                         active={renaming}
-                        onSubmit={submitRenameItem}
-                        onCancel={cancelRenameItem}
+                        onSubmit={submitRenameEvent}
+                        onCancel={cancelRenameEvent}
                         disabled={updatingItem || deletingItem}
                         inputClassName="flex-1 bg-white"
                     />
@@ -71,7 +65,7 @@ export const EventCard = ({ item }) => {
                     <button
                         type="button"
                         className="h-4 w-4 bg-red-500"
-                        onClick={runDeleteItem}
+                        onClick={runDeleteEvent}
                     />
                 </div>
             </div>
@@ -82,7 +76,7 @@ export const EventCard = ({ item }) => {
                         type="datetime-local"
                         className="h-full w-3/4 text-center"
                         defaultValue={toDateTimeLocal(item.timeStart)}
-                        onChange={(event) => updateField('timeStart', event.target.value)}
+                        onChange={event => runUpdateField('timeStart', event.target.value)}
                         disabled={updatingItem}
                     />
                 </div>
@@ -92,7 +86,7 @@ export const EventCard = ({ item }) => {
                         type="datetime-local"
                         className="h-full w-3/4 text-center"
                         defaultValue={toDateTimeLocal(item.timeEnd)}
-                        onChange={(event) => updateField('timeEnd', event.target.value)}
+                        onChange={event => runUpdateField('timeEnd', event.target.value)}
                         disabled={updatingItem}
                     />
                 </div>

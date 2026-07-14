@@ -3,13 +3,7 @@ import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { EditableText } from '../../../components'
 import { useBoardContext } from '../BoardContext'
-
-const toDateTimeLocal = (value) => {
-    if (!value) return ''
-    const date = new Date(value)
-    const offset = date.getTimezoneOffset() * 60000
-    return new Date(date.getTime() - offset).toISOString().slice(0, 16)
-}
+import { toDateTimeLocal } from './timeUtils'
 
 export const ReminderCard = ({ item }) => {
     const [renaming, setRenaming] = useState(false)
@@ -19,7 +13,7 @@ export const ReminderCard = ({ item }) => {
 
     const { upsertItem, removeItem } = useBoardContext()
 
-    const submitRenameItem = async (title) => {
+    const submitRenameReminder = async (title) => {
         if (!title.trim()) {
             setRenaming(false)
             return
@@ -32,16 +26,16 @@ export const ReminderCard = ({ item }) => {
         setRenaming(false)
     }
 
-    const cancelRenameItem = () => setRenaming(false)
+    const cancelRenameReminder = () => setRenaming(false)
 
-    const runDeleteItem = async () => {
+    const runDeleteReminder = async () => {
         const deleted = await deleteItemMutation(item._id)
         if (!deleted) return
 
         removeItem(deleted)
     }
 
-    const updateReminderTime = async (value) => {
+    const runUpdateReminderTime = async (value) => {
         const updated = await updateItemMutation(item._id, { reminderTime: value })
         if (!updated) return
 
@@ -56,8 +50,8 @@ export const ReminderCard = ({ item }) => {
                     <EditableText
                         value={item.title}
                         active={renaming}
-                        onSubmit={submitRenameItem}
-                        onCancel={cancelRenameItem}
+                        onSubmit={submitRenameReminder}
+                        onCancel={cancelRenameReminder}
                         disabled={updatingItem || deletingItem}
                         inputClassName="flex-1 bg-white"
                     />
@@ -71,7 +65,7 @@ export const ReminderCard = ({ item }) => {
                     <button
                         type="button"
                         className="h-4 w-4 bg-red-500"
-                        onClick={runDeleteItem}
+                        onClick={runDeleteReminder}
                     />
                 </div>
             </div>
@@ -82,7 +76,7 @@ export const ReminderCard = ({ item }) => {
                         type="datetime-local"
                         className="h-full w-3/4 text-center bg-slate-300"
                         defaultValue={toDateTimeLocal(item.reminderTime)}
-                        onChange={(event) => updateReminderTime(event.target.value)}
+                        onChange={(event) => runUpdateReminderTime(event.target.value)}
                         disabled={updatingItem}
                     />
                 </div>
