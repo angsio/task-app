@@ -11,6 +11,18 @@ const minutesInto = (date) => date.getHours() * 60 + date.getMinutes()
 
 export const dayKey = (date) => date.toDateString()
 
+export const weekDays = () => {
+    const monday = new Date()
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
+    monday.setHours(0, 0, 0, 0)
+
+    return Array.from({ length: 7 }, (_, offset) => {
+        const day = new Date(monday)
+        day.setDate(monday.getDate() + offset)
+        return day
+    })
+}
+
 export const layoutByDay = (items) => {
     const byDay = new Map()
 

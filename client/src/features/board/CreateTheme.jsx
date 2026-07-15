@@ -16,7 +16,7 @@ export const CreateTheme = () => {
             return
         }
 
-        const created = await createThemeMutation({ name })
+        const created = await createThemeMutation({ name, color: "#FFFFFF" })
         if (!created) return
 
         upsertTheme(created)
