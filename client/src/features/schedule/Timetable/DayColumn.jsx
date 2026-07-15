@@ -1,19 +1,14 @@
 import { List } from '../../../components'
-import { dayPosition } from './time'
 
 const HOURS_IN_DAY = 24
-const VISIBLE_HOURS = 6
 
 const HOURS = Array.from({ length: HOURS_IN_DAY }, (_, hour) => hour)
 
-const DAY_HEIGHT = `calc(100% * ${HOURS_IN_DAY} / ${VISIBLE_HOURS})`
 const HOUR_HEIGHT = `calc(100% / ${HOURS_IN_DAY})`
 
-const DAY_LABEL = { weekday: 'short', day: 'numeric' }
-
-export const DayColumn = ({ day, items }) => {
+export const DayColumn = ({ placed }) => {
     return (
-        <div className="relative w-full bg-violet-500" style={{ height: DAY_HEIGHT }}>
+        <div className="relative flex-1 min-h-0 w-full bg-violet-500">
             <List
                 items={HOURS}
                 keyExtractor={hour => hour}
@@ -24,20 +19,24 @@ export const DayColumn = ({ day, items }) => {
                 className="h-full w-full"
             >
                 {hour => (
-                    <div className="h-full w-full border-b border-black">
-                        {hour === 0 && day.toLocaleDateString(undefined, DAY_LABEL)}
+                    <div className="h-full w-full flex border-b border-r border-black">
+                        <div className="w-1/12 flex justify-center border-r border-black">
+                            {hour}
+                        </div>
                     </div>
                 )}
             </List>
-            {items.map(item => (
-                <div
-                    key={item._id}
-                    className="absolute w-full truncate bg-slate-50"
-                    style={dayPosition(item)}
-                >
-                    {item.title}
-                </div>
-            ))}
+            <div className="absolute top-0 bottom-0 right-0 w-11/12">
+                {placed.map(({ item, style }) => (
+                    <div
+                        key={item._id}
+                        className="absolute w-full truncate bg-slate-50"
+                        style={style}
+                    >
+                        {item.title}
+                    </div>
+                ))}
+            </div>
         </div>
     )
 }
