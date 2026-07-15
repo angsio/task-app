@@ -15,7 +15,7 @@ export const Schedule = () => {
 
     return (
         <ScheduleProvider value={{
-
+            upsertItem: items.upsert
         }}>
             <div className="h-full w-full flex flex-row">
                 <Timetable themes={themes.data} items={items.data} />

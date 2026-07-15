@@ -30,7 +30,7 @@ export const DayColumn = ({ placed }) => {
                 )}
             </List>
             <div className="absolute top-0 right-0 h-full w-11/12">
-                {placed.map(({ item, style }) => {
+                {placed.map(({ item, style, color }) => {
                     const Card = ITEM_CARDS[item.itemType]
 
                     return (
@@ -39,7 +39,7 @@ export const DayColumn = ({ placed }) => {
                             className="absolute w-full truncate"
                             style={style}
                         >
-                            {Card ? <Card item={item} /> : null}
+                            {Card ? <Card item={item} color={color} /> : null}
                         </div>
                     )}
                 )}

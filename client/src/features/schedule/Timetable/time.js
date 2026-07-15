@@ -7,6 +7,13 @@ const SPAN = {
     Reminder: item => ({ start: item.reminderTime, end: null }),
 }
 
+export const toHourMinute = (value) => {
+    const date = new Date(value)
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${hours}:${minutes}`
+}
+
 const minutesInto = (date) => date.getHours() * 60 + date.getMinutes()
 
 export const dayKey = (date) => date.toDateString()
@@ -45,7 +52,7 @@ export const layoutByDay = (items) => {
             style: {
                 top: `${(from / MINUTES_IN_DAY) * 100}%`,
                 height: `${((to - from) / MINUTES_IN_DAY) * 100}%`,
-            },
+            }
         }
 
         const key = dayKey(start)
