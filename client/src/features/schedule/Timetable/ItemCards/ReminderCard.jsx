@@ -8,7 +8,7 @@ export const ReminderCard = ({ item: reminder, color }) => {
                 style={{ backgroundColor: color }}
             />
             <div className="h-full w-full flex flex-col pl-6">
-                <div className="text-sm">
+                <div className="text-sm truncate shrink-0 leading-6">
                     <span className="font-bold">Reminder: </span>{reminder.title}
                 </div>
                 <div className="text-sm">

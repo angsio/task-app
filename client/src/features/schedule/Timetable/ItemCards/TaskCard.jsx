@@ -5,8 +5,7 @@ import { toHourMinute } from '../time'
 
 export const TaskCard = ({ item: task, color }) => {
 
-    const { mutate: updateTaskMutation, loading: updatingTask } = useMutation(updateItem)
-
+    const { mutate: updateTaskMutation } = useMutation(updateItem)
     const { upsertItem } = useScheduleContext()
 
     const runToggleTaskCompleted = async () => {
@@ -23,7 +22,7 @@ export const TaskCard = ({ item: task, color }) => {
                 style={{ backgroundColor: color }}
             />
             <div className="h-full w-full flex flex-col pl-6">
-                <div className={`text-sm ${task.completed ? 'line-through' : '' }`}>
+                <div className={`text-sm truncate shrink-0 leading-6 ${task.completed ? 'line-through' : '' }`}>
                     <span className="font-bold">Task: </span>{task.title}
                 </div>
                 <div className={`text-sm ${task.completed ? 'line-through' : ''}`}>

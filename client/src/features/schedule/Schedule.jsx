@@ -15,13 +15,14 @@ export const Schedule = () => {
 
     return (
         <ScheduleProvider value={{
-            upsertItem: items.upsert
+            upsertItem: items.upsert,
+            upsertTheme: themes.upsert
         }}>
             <div className="h-full w-full flex flex-row">
                 <Timetable themes={themes.data} items={items.data} />
                 <div className="h-full w-1/4 flex flex-col">
                     <Agent />
-                    <ThemeRows />
+                    <ThemeRows themes={themes.data} />
                 </div>
             </div>
         </ScheduleProvider>

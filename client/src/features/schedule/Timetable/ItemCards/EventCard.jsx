@@ -8,11 +8,11 @@ export const EventCard = ({ item: event, color }) => {
                 style={{ backgroundColor: color }}
             />
             <div className="h-full w-full flex flex-col pl-6">
-                <div className="text-sm">
+                <div className="text-sm truncate shrink-0 leading-6">
                     <span className="font-bold">Event: </span>{event.title}
                 </div>
                 <div className="flex flex-row text-sm">
-                    <div className="mr-1">
+                    <div className="mr-4">
                         <span className="font-bold">Starts: </span>{toHourMinute(event.timeStart)}
                     </div>
                     <div>

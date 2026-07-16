@@ -36,7 +36,7 @@ export const DayColumn = ({ placed }) => {
                     return (
                         <div
                             key={item._id}
-                            className="absolute w-full truncate"
+                            className="absolute w-full min-h-6 overflow-hidden"
                             style={style}
                         >
                             {Card ? <Card item={item} color={color} /> : null}
