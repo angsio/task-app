@@ -4,7 +4,7 @@ export const ReminderCard = ({ item: reminder, color }) => {
     return (
         <div className="h-full w-full relative flex flex-row bg-slate-100">
             <div
-                className="absolute left-0 h-full w-2 hover:w-4 transition-[width] duration-200 ease-out"
+                className="absolute left-0 h-full w-2"
                 style={{ backgroundColor: color }}
             />
             <div className="h-full w-full flex flex-col pl-6">

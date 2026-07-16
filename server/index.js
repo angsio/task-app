@@ -3,7 +3,7 @@ import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
 
-import { themesRouter, itemsRouter } from './routes/index.js'
+import { themesRouter, itemsRouter, agentRouter } from './routes/index.js'
 
 const app = express()
 const PORT = process.env.PORT || 5001
@@ -17,6 +17,7 @@ mongoose.connect(process.env.MONGODB_URI, { dbName: 'task-app' })
 
 app.use('/api/themes', themesRouter)
 app.use('/api/items', itemsRouter)
+app.use('/api/agent', agentRouter)
 
 app.listen(PORT, () => {
     console.log(`Server is running in development mode on port ${PORT}`)

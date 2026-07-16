@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { updateTheme, deleteTheme } from '../../api'
 import { useMutation } from '../../hooks'
-import { EditableText, List } from '../../components'
+import { EditableText, List, ColorPicker } from '../../components'
 import { useBoardContext } from './BoardContext'
 import { TaskCard, EventCard, ReminderCard } from './ItemCards'
 import { CreateItem } from './CreateItem'
@@ -31,6 +31,13 @@ export const ThemeColumn = ({ theme, items }) => {
 
     const cancelRenameTheme = () => setRenaming(false)
 
+    const runSetThemeColor = async (color) => {
+        const updated = await updateThemeMutation(theme._id, { color })
+        if (!updated) return
+
+        upsertTheme(updated)
+    }
+
     const runDeleteTheme = async () => {
         const deleted = await deleteThemeMutation(theme._id)
         if (!deleted) return
@@ -52,6 +59,11 @@ export const ThemeColumn = ({ theme, items }) => {
                         inputClassName="bg-white"
                     />
                     <div className="flex flex-row gap-4">
+                        <ColorPicker
+                            color={theme.color}
+                            onChange={runSetThemeColor}
+                            className="h-4 w-4"
+                        />
                         <button
                             type="button"
                             className="h-4 w-4 bg-slate-500"
