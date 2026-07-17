@@ -2,33 +2,57 @@ import { useState } from 'react'
 
 import { sendPrompt } from '../../../api'
 import { useMutation } from '../../../hooks'
+import { List } from '../../../components'
 
 export const Agent = () => {
 
     const [prompt, setPrompt] = useState('')
-    const [reply, setReply] = useState(null)
+    const [messages, setMessages] = useState([])
 
     const { mutate: sendPromptMutation, loading } = useMutation(sendPrompt)
+
+    const appendMessage = (role, text) => {
+        setMessages(current => [...current, { id: crypto.randomUUID(), role, text }])
+    }
 
     const runSendPrompt = async (event) => {
         event.preventDefault()
         if (!prompt.trim() || loading) return
 
-        const result = await sendPromptMutation(prompt)
+        const text = prompt
+        appendMessage('user', text)
+        setPrompt('')
+
+        const result = await sendPromptMutation(text)
         if (!result) return
 
-        setReply(result.reply)
-        setPrompt('')
+        appendMessage('assistant', result.reply)
     }
 
     return (
         <div className="h-3/5 w-full flex flex-col bg-slate-300 border-b border-black">
-            <div className="h-full w-full overflow-y-auto p-3 text-sm whitespace-pre-wrap">
-                {loading
-                    ? <span className="text-slate-500">Thinking...</span>
-                    : <span className={reply ? '' : 'text-slate-500'}>
-                        {reply ?? 'Ask the agent something.'}
-                    </span>}
+            <div className="h-full w-full overflow-y-auto py-2">
+                {messages.length === 0 && !loading && (
+                    <p className="px-3 text-sm text-slate-500">Ask the agent something.</p>
+                )}
+                <List
+                    items={messages}
+                    keyExtractor={message => message.id}
+                    flow="x"
+                    slots={1}
+                    autoSize="auto"
+                    className="w-full"
+                    itemClassName="px-3 py-1"
+                >
+                    {message => (
+                        <div className={`w-full flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <span className={`max-w-4/5 p-2 text-sm whitespace-pre-wrap ${message.role === 'user' ? 'bg-slate-100' : 'bg-white'}`}>
+                                {message.text}
+                            </span>
+                        </div>
+                    )}
+                </List>
+                {loading && <p className="px-3 py-1 text-sm text-slate-500">Thinking...</p>}
             </div>
             <form onSubmit={runSendPrompt} className="w-full flex border-t border-black">
                 <input
