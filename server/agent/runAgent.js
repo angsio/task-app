@@ -1,6 +1,6 @@
 import { chat, embed } from './useJetson.js'
 import { matchTools } from './useSupabase.js'
-import { listItems, listThemes } from './tools/index.js'
+import { listItems, listThemes, createItems } from './tools/index.js'
 
 const SYSTEM_PROMPT = 
 `You are a helpful assistant that manages items on a schedule. Never use emojis in your responses.
@@ -10,7 +10,8 @@ const MIN_SIMILARITY = 0.6
 
 export const TOOLS = {
     [listItems.name]: listItems,
-    [listThemes.name]: listThemes
+    [listThemes.name]: listThemes,
+    [createItems.name]: createItems
 }
 
 const toToolSpec = (tool) => ({
@@ -54,15 +55,33 @@ export const runAgent = async (prompt) => {
     ]
 
     const answer = await chat(messages, tools)
-    if (!answer.tool_calls?.length) return { reply: answer.content, toolCalls: [] }
+    if (!answer.tool_calls?.length) return { reply: answer.content, toolCalls: [], pendingActions: [] }
 
-    const toolMessages = await Promise.all(answer.tool_calls.map(runToolCall))
-    const summary = await chat([...messages, answer, ...toolMessages])
-
-    const toolCalls = answer.tool_calls.map(call => ({
+    const calls = answer.tool_calls.map(call => ({
         name: call.function.name,
         arguments: call.function.arguments
     }))
 
-    return { reply: summary.content, toolCalls }
+    const pendingActions = calls.filter(call => TOOLS[call.name]?.confirm)
+    if (pendingActions.length) return { reply: answer.content, toolCalls: [], pendingActions }
+
+    const toolMessages = await Promise.all(answer.tool_calls.map(runToolCall))
+    const summary = await chat([...messages, answer, ...toolMessages])
+
+    return { reply: summary.content, toolCalls: calls, pendingActions: [] }
+}
+
+export const executeActions = async (actions) => {
+    const results = []
+
+    for (const action of actions) {
+        const tool = TOOLS[action.name]
+        const result = tool
+            ? await tool.handler(action.arguments)
+            : { error: `Unknown tool: ${action.name}` }
+
+        results.push({ name: action.name, result })
+    }
+
+    return results
 }

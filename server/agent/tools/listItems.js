@@ -1,4 +1,6 @@
-import { Item, Theme } from '../../models/index.js'
+import { Item } from '../../models/index.js'
+
+import { findThemeId } from './utilities.js'
 
 const shapeItem = (item) => {
     const base = { title: item.title, type: item.itemType, theme: item.theme?.name ?? null }
@@ -33,9 +35,9 @@ export const listItems = {
         if (itemType) filter.itemType = itemType
 
         if (theme) {
-            const match = await Theme.findOne({ name: new RegExp(`^${theme}$`, 'i') }).lean()
-            if (!match) return { error: `No theme named "${theme}" exists.` }
-            filter.theme = match._id
+            const themeId = await findThemeId(theme)
+            if (!themeId) return { error: `No theme named "${theme}" exists.` }
+            filter.theme = themeId
         }
 
         const items = await Item.find(filter).populate('theme', 'name').lean()
