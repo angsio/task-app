@@ -4,6 +4,14 @@ import { sendPrompt } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { List } from '../../../components'
 
+const describeToolCall = (call) => {
+    const args = Object.entries(call.arguments ?? {})
+    if (args.length === 0) return `Called ${call.name}`
+
+    const fields = args.map(([field, value]) => `${field}: ${value}`).join(', ')
+    return `Called ${call.name} with ${fields}`
+}
+
 export const Agent = () => {
 
     const [prompt, setPrompt] = useState('')
@@ -26,6 +34,7 @@ export const Agent = () => {
         const result = await sendPromptMutation(text)
         if (!result) return
 
+        result.toolCalls.forEach(call => appendMessage('tool', describeToolCall(call)))
         appendMessage('assistant', result.reply)
     }
 
@@ -44,13 +53,21 @@ export const Agent = () => {
                     className="w-full"
                     itemClassName="px-3 py-1"
                 >
-                    {message => (
-                        <div className={`w-full flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <span className={`max-w-4/5 p-2 text-sm whitespace-pre-wrap ${message.role === 'user' ? 'bg-slate-100' : 'bg-white'}`}>
-                                {message.text}
-                            </span>
-                        </div>
-                    )}
+                    {message => message.role === 'tool'
+                        ? (
+                            <div className="w-full flex justify-start">
+                                <span className="max-w-4/5 px-2 text-xs italic text-slate-500">
+                                    {message.text}
+                                </span>
+                            </div>
+                        )
+                        : (
+                            <div className={`w-full flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <span className={`max-w-4/5 p-2 text-sm whitespace-pre-wrap ${message.role === 'user' ? 'bg-slate-100' : 'bg-white'}`}>
+                                    {message.text}
+                                </span>
+                            </div>
+                        )}
                 </List>
                 {loading && <p className="px-3 py-1 text-sm text-slate-500">Thinking...</p>}
             </div>

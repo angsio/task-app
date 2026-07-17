@@ -10,8 +10,8 @@ router.post('/', async (req, res) => {
         const { prompt } = req.body
         if (!prompt?.trim()) throw new ApiError(400, 'Prompt is required.')
 
-        const reply = await runAgent(prompt)
-        res.status(200).json({ reply })
+        const result = await runAgent(prompt)
+        res.status(200).json(result)
     } catch (error) {
         handleError(res, error)
     }

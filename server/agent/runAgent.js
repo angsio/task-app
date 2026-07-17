@@ -1,6 +1,6 @@
 import { chat, embed } from './useJetson.js'
 import { matchTools } from './useSupabase.js'
-import { listItems } from './tools/index.js'
+import { listItems, listThemes } from './tools/index.js'
 
 const SYSTEM_PROMPT = 
 `You are a helpful assistant that manages items on a schedule. Never use emojis in your responses.
@@ -9,7 +9,8 @@ You have access to a tool repository that let's you help the user with managing 
 const MIN_SIMILARITY = 0.6
 
 export const TOOLS = {
-    [listItems.name]: listItems
+    [listItems.name]: listItems,
+    [listThemes.name]: listThemes
 }
 
 const toToolSpec = (tool) => ({
@@ -53,10 +54,15 @@ export const runAgent = async (prompt) => {
     ]
 
     const answer = await chat(messages, tools)
-    if (!answer.tool_calls?.length) return answer.content
+    if (!answer.tool_calls?.length) return { reply: answer.content, toolCalls: [] }
 
     const toolMessages = await Promise.all(answer.tool_calls.map(runToolCall))
     const summary = await chat([...messages, answer, ...toolMessages])
 
-    return summary.content
+    const toolCalls = answer.tool_calls.map(call => ({
+        name: call.function.name,
+        arguments: call.function.arguments
+    }))
+
+    return { reply: summary.content, toolCalls }
 }
