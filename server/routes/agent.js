@@ -1,29 +1,29 @@
 import express from 'express'
 
 import { ApiError, handleError } from '../errors.js'
-import { runAgent, executeActions } from '../agent/runAgent.js'
+import { runAgent, resolveActions } from '../agent/runAgent.js'
 
 const router = express.Router()
 
 router.post('/', async (req, res) => {
     try {
-        const { prompt } = req.body
-        if (!prompt?.trim()) throw new ApiError(400, 'Prompt is required.')
+        const { messages } = req.body
+        if (!messages?.length) throw new ApiError(400, 'Messages are required.')
 
-        const result = await runAgent(prompt)
+        const result = await runAgent(messages)
         res.status(200).json(result)
     } catch (error) {
         handleError(res, error)
     }
 })
 
-router.post('/execute', async (req, res) => {
+router.post('/confirm', async (req, res) => {
     try {
-        const { actions } = req.body
-        if (!actions?.length) throw new ApiError(400, 'No actions to execute.')
+        const { messages, approved } = req.body
+        if (!messages?.length) throw new ApiError(400, 'Messages are required.')
 
-        const results = await executeActions(actions)
-        res.status(200).json({ results })
+        const result = await resolveActions(messages, approved)
+        res.status(200).json(result)
     } catch (error) {
         handleError(res, error)
     }

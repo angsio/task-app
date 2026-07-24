@@ -2,14 +2,13 @@ import { chat, embed } from './useBedrock.js'
 import { matchTools } from './useSupabase.js'
 import { listItems, listThemes, createItems } from './tools/index.js'
 
-const SYSTEM_PROMPT = 
-`You are a helpful assistant that manages items on a schedule. Never use emojis in your responses.
-You have access to a tool repository that let's you help the user with managing and reading their schedule.`
+const SYSTEM_PROMPT =
+`You are a helpful assistant that manages items on a user's schedule. Never use emojis in your responses.
+You can call tools to read and change the schedule, and you may both call tools and write a reply in the same turn.
+Always finish answering everything the user asked, even after using a tool.`
 
-// Titan's cosine scores are compressed (~0.1-0.6, where nomic ran ~0.6-0.8): real
-// matches clear ~0.15+, off-topic prompts stay under ~0.11. Below this keeps no tool,
-// so the model just replies. Retune if the embedding model changes.
-const MIN_SIMILARITY = 0.12
+const MIN_SIMILARITY = 0.05
+const MAX_STEPS = 8
 
 export const TOOLS = {
     [listItems.name]: listItems,
@@ -37,7 +36,17 @@ const selectTools = async (prompt) => {
         .map(toToolSpec)
 }
 
-const runToolCall = async (call) => {
+const withSystem = (messages) =>
+    messages[0]?.role === 'system'
+        ? messages
+        : [{ role: 'system', content: SYSTEM_PROMPT }, ...messages]
+
+const lastUserPrompt = (messages) =>
+    messages.findLast(message => message.role === 'user')?.content ?? ''
+
+const needsConfirm = (call) => TOOLS[call.function.name]?.confirm
+
+const runTool = async (call) => {
     const tool = TOOLS[call.function.name]
     const result = tool
         ? await tool.handler(JSON.parse(call.function.arguments))
@@ -50,41 +59,52 @@ const runToolCall = async (call) => {
     }
 }
 
-export const runAgent = async (prompt) => {
-    const tools = await selectTools(prompt)
-    const messages = [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-    ]
+const describeCall = (call) => ({
+    id: call.id,
+    name: call.function.name,
+    arguments: JSON.parse(call.function.arguments)
+})
 
-    const answer = await chat(messages, tools)
-    if (!answer.tool_calls?.length) return { reply: answer.content, toolCalls: [], pendingActions: [] }
+const advance = async (messages, tools) => {
+    for (let step = 0; step < MAX_STEPS; step++) {
+        const answer = await chat(messages, tools)
+        messages.push(answer)
 
-    const calls = answer.tool_calls.map(call => ({
-        name: call.function.name,
-        arguments: JSON.parse(call.function.arguments)
-    }))
+        if (!answer.tool_calls?.length) return { messages, pending: [] }
 
-    const pendingActions = calls.filter(call => TOOLS[call.name]?.confirm)
-    if (pendingActions.length) return { reply: answer.content, toolCalls: [], pendingActions }
+        for (const call of answer.tool_calls.filter(call => !needsConfirm(call))) {
+            messages.push(await runTool(call))
+        }
 
-    const toolMessages = await Promise.all(answer.tool_calls.map(runToolCall))
-    const summary = await chat([...messages, answer, ...toolMessages])
-
-    return { reply: summary.content, toolCalls: calls, pendingActions: [] }
-}
-
-export const executeActions = async (actions) => {
-    const results = []
-
-    for (const action of actions) {
-        const tool = TOOLS[action.name]
-        const result = tool
-            ? await tool.handler(action.arguments)
-            : { error: `Unknown tool: ${action.name}` }
-
-        results.push({ name: action.name, result })
+        const pending = answer.tool_calls.filter(needsConfirm)
+        if (pending.length) return { messages, pending: pending.map(describeCall) }
     }
 
-    return results
+    return { messages, pending: [] }
+}
+
+export const runAgent = async (incoming) => {
+    const messages = withSystem(incoming)
+    const tools = await selectTools(lastUserPrompt(messages))
+
+    return advance(messages, tools)
+}
+
+export const resolveActions = async (incoming, approved) => {
+    const messages = [...incoming]
+    const answer = messages.findLast(message => message.role === 'assistant')
+
+    const pending = (answer?.tool_calls ?? []).filter(call =>
+        needsConfirm(call) && !messages.some(message => message.tool_call_id === call.id)
+    )
+
+    for (const call of pending) {
+        messages.push(approved
+            ? await runTool(call)
+            : { role: 'tool', tool_call_id: call.id, content: JSON.stringify({ cancelled: true, message: 'The user declined this action. Nothing was created or changed. Tell the user it was cancelled and do not claim it was done.' }) }
+        )
+    }
+
+    const tools = await selectTools(lastUserPrompt(messages))
+    return advance(messages, tools)
 }

@@ -1,3 +1,3 @@
 export { getThemes, createTheme, updateTheme, deleteTheme } from './themes'
 export { getItems, createItem, updateItem, deleteItem } from './items'
-export { sendPrompt, executeActions } from './agent'
+export { sendMessages, resolveActions } from './agent'

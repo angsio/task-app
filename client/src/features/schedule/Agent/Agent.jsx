@@ -1,152 +1,151 @@
 import { useState } from 'react'
 
-import { sendPrompt, executeActions } from '../../../api'
+import { sendMessages, resolveActions } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { List } from '../../../components'
 
 const describeToolCall = (call) => {
-    const args = Object.entries(call.arguments ?? {})
-    if (args.length === 0) return `Called ${call.name}`
+    const args = Object.entries(JSON.parse(call.function.arguments || '{}'))
+        .filter(([, value]) => typeof value !== 'object')
+        .map(([field, value]) => `${field}: ${value}`)
 
-    const fields = args.map(([field, value]) => `${field}: ${value}`).join(', ')
-    return `Called ${call.name} with ${fields}`
+    return args.length ? `Used ${call.function.name} (${args.join(', ')})` : `Used ${call.function.name}`
 }
 
-const pendingItems = (actions) => actions.flatMap(action => action.arguments.items ?? [])
+const toBubbles = (messages) => {
+    const bubbles = []
+
+    messages.forEach((message, index) => {
+        if (message.role === 'user') {
+            bubbles.push({ key: `${index}`, kind: 'user', text: message.content })
+        } else if (message.role === 'assistant') {
+            if (message.content) bubbles.push({ key: `${index}-text`, kind: 'assistant', text: message.content })
+
+            message.tool_calls
+                ?.filter(call => messages.some(entry => entry.tool_call_id === call.id))
+                .forEach((call, order) => bubbles.push({ key: `${index}-${order}`, kind: 'tool', text: describeToolCall(call) }))
+        }
+    })
+
+    return bubbles
+}
+
+const pendingItems = (pending) => pending.flatMap(call => call.arguments.items ?? [])
 
 const styles = {
     panel:        'bg-slate-300 border-b border-black',
     hint:         'text-sm text-slate-500',
-    confirmBox:   'bg-white border border-black',
-    confirmTitle: 'text-sm font-bold',
-    itemList:     'text-sm list-disc',
-    primaryBtn:   'text-sm text-white bg-slate-700 disabled:opacity-50',
-    cancelBtn:    'text-sm bg-slate-200 disabled:opacity-50',
-    okText:       'text-sm text-green-700',
-    errText:      'text-sm text-red-600',
     toolText:     'text-xs italic text-slate-500',
     bubble:       'text-sm whitespace-pre-wrap',
     userBg:       'bg-slate-100',
     botBg:        'bg-white',
+    confirmBox:   'bg-white border border-black',
+    confirmTitle: 'text-sm font-bold',
+    itemList:     'text-sm list-disc',
     form:         'border-t border-black',
     input:        'text-sm bg-slate-100 outline-none',
+    primaryBtn:   'text-sm text-white bg-slate-700 disabled:opacity-50',
+    cancelBtn:    'text-sm bg-slate-200 disabled:opacity-50',
 }
 
 export const Agent = () => {
-
-    const [prompt, setPrompt] = useState('')
+    const [input, setInput] = useState('')
     const [messages, setMessages] = useState([])
+    const [pending, setPending] = useState([])
 
-    const { mutate: sendPromptMutation, loading } = useMutation(sendPrompt)
-    const { mutate: executeActionsMutation, loading: executing } = useMutation(executeActions)
+    const { mutate: sendMutation, loading: sending } = useMutation(sendMessages)
+    const { mutate: resolveMutation, loading: resolving } = useMutation(resolveActions)
 
-    const appendMessage = (role, text) => {
-        setMessages(current => [...current, { id: crypto.randomUUID(), role, text }])
-    }
+    const busy = sending || resolving
+    const bubbles = toBubbles(messages)
 
-    const updateMessage = (id, changes) => {
-        setMessages(current => current.map(message => message.id === id ? { ...message, ...changes } : message))
-    }
-
-    const runSendPrompt = async (event) => {
+    const send = async (event) => {
         event.preventDefault()
-        if (!prompt.trim() || loading) return
+        if (!input.trim() || busy) return
 
-        const text = prompt
-        appendMessage('user', text)
-        setPrompt('')
+        const next = [...messages, { role: 'user', content: input }]
+        setMessages(next)
+        setInput('')
+        setPending([])
 
-        const result = await sendPromptMutation(text)
+        const result = await sendMutation(next)
         if (!result) return
 
-        result.toolCalls.forEach(call => appendMessage('tool', describeToolCall(call)))
-
-        if (result.pendingActions.length) {
-            setMessages(current => [...current, { id: crypto.randomUUID(), role: 'confirmation', actions: result.pendingActions, status: 'pending' }])
-        } else {
-            appendMessage('assistant', result.reply)
-        }
+        setMessages(result.messages)
+        setPending(result.pending)
     }
 
-    const confirmActions = async (message) => {
-        const result = await executeActionsMutation(message.actions)
+    const resolve = async (approved) => {
+        const result = await resolveMutation(messages, approved)
         if (!result) return
 
-        const failed = result.results.find(entry => entry.result?.error)
-        updateMessage(message.id, failed ? { status: 'error', note: failed.result.error } : { status: 'confirmed' })
+        setMessages(result.messages)
+        setPending(result.pending)
     }
-
-    const cancelActions = (message) => updateMessage(message.id, { status: 'cancelled' })
 
     return (
         <div className={`h-3/5 w-full flex flex-col ${styles.panel}`}>
             <div className="h-full w-full overflow-y-auto py-2">
-                {messages.length === 0 && !loading && (
+                {bubbles.length === 0 && !busy && (
                     <p className={`px-3 ${styles.hint}`}>Ask the agent something.</p>
                 )}
                 <List
-                    items={messages}
-                    keyExtractor={message => message.id}
+                    items={bubbles}
+                    keyExtractor={bubble => bubble.key}
                     flow="x"
                     slots={1}
                     autoSize="auto"
                     className="w-full"
                     itemClassName="px-3 py-1"
                 >
-                    {message => {
-                        if (message.role === 'confirmation') return (
-                            <div className="w-full flex justify-center">
-                                <div className={`max-w-4/5 w-full flex flex-col gap-2 p-3 ${styles.confirmBox}`}>
-                                    <p className={styles.confirmTitle}>Create these items?</p>
-                                    <ul className={`pl-4 ${styles.itemList}`}>
-                                        {pendingItems(message.actions).map((item, index) => (
-                                            <li key={index}>{item.title} — {item.itemType} in {item.theme}</li>
-                                        ))}
-                                    </ul>
-                                    {message.status === 'pending' && (
-                                        <div className="flex gap-2">
-                                            <button type="button" onClick={() => confirmActions(message)} disabled={executing} className={`px-3 py-1 ${styles.primaryBtn}`}>Confirm</button>
-                                            <button type="button" onClick={() => cancelActions(message)} disabled={executing} className={`px-3 py-1 ${styles.cancelBtn}`}>Cancel</button>
-                                        </div>
-                                    )}
-                                    {message.status === 'confirmed' && <p className={styles.okText}>Created.</p>}
-                                    {message.status === 'cancelled' && <p className={styles.hint}>Cancelled.</p>}
-                                    {message.status === 'error' && <p className={styles.errText}>{message.note}</p>}
-                                </div>
-                            </div>
-                        )
-
-                        if (message.role === 'tool') return (
+                    {bubble => {
+                        if (bubble.kind === 'tool') return (
                             <div className="w-full flex justify-start">
-                                <span className={`max-w-4/5 px-2 ${styles.toolText}`}>
-                                    {message.text}
-                                </span>
+                                <span className={`max-w-4/5 px-2 ${styles.toolText}`}>{bubble.text}</span>
                             </div>
                         )
 
                         return (
-                            <div className={`w-full flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <span className={`max-w-4/5 p-2 ${styles.bubble} ${message.role === 'user' ? styles.userBg : styles.botBg}`}>
-                                    {message.text}
+                            <div className={`w-full flex ${bubble.kind === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <span className={`max-w-4/5 p-2 ${styles.bubble} ${bubble.kind === 'user' ? styles.userBg : styles.botBg}`}>
+                                    {bubble.text}
                                 </span>
                             </div>
                         )
                     }}
                 </List>
-                {loading && <p className={`px-3 py-1 ${styles.hint}`}>Thinking...</p>}
+
+                {pending.length > 0 && (
+                    <div className="w-full flex justify-center px-3 py-1">
+                        <div className={`max-w-4/5 w-full flex flex-col gap-2 p-3 ${styles.confirmBox}`}>
+                            <p className={styles.confirmTitle}>Create these items?</p>
+                            <ul className={`pl-4 ${styles.itemList}`}>
+                                {pendingItems(pending).map((item, index) => (
+                                    <li key={index}>{item.title} — {item.itemType} in {item.theme}</li>
+                                ))}
+                            </ul>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => resolve(true)} disabled={resolving} className={`px-3 py-1 ${styles.primaryBtn}`}>Confirm</button>
+                                <button type="button" onClick={() => resolve(false)} disabled={resolving} className={`px-3 py-1 ${styles.cancelBtn}`}>Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {busy && <p className={`px-3 py-1 ${styles.hint}`}>Thinking...</p>}
             </div>
-            <form onSubmit={runSendPrompt} className={`w-full flex ${styles.form}`}>
+            <form onSubmit={send} className={`w-full flex ${styles.form}`}>
                 <input
                     type="text"
-                    value={prompt}
-                    onChange={event => setPrompt(event.target.value)}
-                    disabled={loading}
+                    value={input}
+                    onChange={event => setInput(event.target.value)}
+                    disabled={busy}
                     placeholder="Send a prompt..."
                     className={`w-full p-2 ${styles.input}`}
                 />
                 <button
                     type="submit"
-                    disabled={loading || !prompt.trim()}
+                    disabled={busy || !input.trim()}
                     className={`px-4 ${styles.primaryBtn}`}
                 >
                     Send

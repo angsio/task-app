@@ -1,11 +1,11 @@
 import { request } from './request'
 
-export const sendPrompt = (prompt) => request('/agent', {
+export const sendMessages = (messages) => request('/agent', {
     method: 'POST',
-    body: { prompt }
+    body: { messages }
 })
 
-export const executeActions = (actions) => request('/agent/execute', {
+export const resolveActions = (messages, approved) => request('/agent/confirm', {
     method: 'POST',
-    body: { actions }
+    body: { messages, approved }
 })
