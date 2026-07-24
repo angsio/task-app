@@ -5,6 +5,15 @@ import { EditableText } from '../../../components'
 import { useBoardContext } from '../BoardContext'
 import { toDateTimeLocal } from './timeUtils'
 
+const styles = {
+    card:       'bg-white',
+    input:      'bg-white',
+    editBtn:    'bg-slate-500',
+    deleteBtn:  'bg-red-500',
+    field:      'bg-slate-300',
+    fieldInput: 'text-center bg-slate-300',
+}
+
 export const ReminderCard = ({ item }) => {
     const [renaming, setRenaming] = useState(false)
 
@@ -43,38 +52,38 @@ export const ReminderCard = ({ item }) => {
     }
 
     return (
-        <div className="h-full w-full flex flex-col p-4 bg-white">
+        <div className={`h-full w-full flex flex-col p-4 ${styles.card}`}>
             <div className="h-1/5 w-full flex flex-row items-center justify-between">
-                <div>
-                    <span className="mr-1">Reminder:</span>
+                <div className="flex items-center gap-1">
+                    <span>Reminder:</span>
                     <EditableText
                         value={item.title}
                         active={renaming}
                         onSubmit={submitRenameReminder}
                         onCancel={cancelRenameReminder}
                         disabled={updatingItem || deletingItem}
-                        inputClassName="flex-1 bg-white"
+                        inputClassName={`flex-1 ${styles.input}`}
                     />
                 </div>
-                <div className="flex flex-row ml-4 gap-4">
+                <div className="flex flex-row gap-4">
                     <button
                         type="button"
-                        className="h-4 w-4 bg-slate-500"
+                        className={`h-4 w-4 ${styles.editBtn}`}
                         onClick={() => setRenaming(true)}
                     />
                     <button
                         type="button"
-                        className="h-4 w-4 bg-red-500"
+                        className={`h-4 w-4 ${styles.deleteBtn}`}
                         onClick={runDeleteReminder}
                     />
                 </div>
             </div>
             <div className="h-4/5 w-full flex items-center pt-4">
-                <div className="h-1/2 w-full flex flex-row items-center bg-slate-300 pl-4">
+                <div className={`h-1/2 w-full flex flex-row items-center pl-4 ${styles.field}`}>
                     <span className="w-1/4">Time:</span>
                     <input
                         type="datetime-local"
-                        className="h-full w-3/4 text-center bg-slate-300"
+                        className={`h-full w-3/4 ${styles.fieldInput}`}
                         defaultValue={toDateTimeLocal(item.reminderTime)}
                         onChange={(event) => runUpdateReminderTime(event.target.value)}
                         disabled={updatingItem}

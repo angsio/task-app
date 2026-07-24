@@ -1,22 +1,29 @@
 import { toHourMinute } from '../time'
 
+const styles = {
+    card:  'bg-slate-100',
+    body:  'text-sm',
+    label: 'font-bold',
+    title: 'truncate leading-6',
+}
+
 export const EventCard = ({ item: event, color }) => {
     return (
-        <div className="h-full w-full relative flex flex-row bg-slate-100">
+        <div className={`relative h-full w-full flex flex-row ${styles.card}`}>
             <div
                 className="absolute left-0 h-full w-2"
                 style={{ backgroundColor: color }}
             />
-            <div className="h-full w-full flex flex-col pl-6">
-                <div className="text-sm truncate shrink-0 leading-6">
-                    <span className="font-bold">Event: </span>{event.title}
+            <div className={`h-full w-full flex flex-col pl-6 ${styles.body}`}>
+                <div className={`shrink-0 ${styles.title}`}>
+                    <span className={styles.label}>Event: </span>{event.title}
                 </div>
-                <div className="flex flex-row text-sm">
-                    <div className="mr-4">
-                        <span className="font-bold">Starts: </span>{toHourMinute(event.timeStart)}
+                <div className="flex flex-row gap-4">
+                    <div>
+                        <span className={styles.label}>Starts: </span>{toHourMinute(event.timeStart)}
                     </div>
                     <div>
-                        <span className="font-bold">Ends: </span>{toHourMinute(event.timeEnd)}
+                        <span className={styles.label}>Ends: </span>{toHourMinute(event.timeEnd)}
                     </div>
                 </div>
             </div>

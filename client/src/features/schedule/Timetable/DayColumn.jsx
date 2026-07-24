@@ -9,9 +9,15 @@ const HOUR_HEIGHT = `calc(100% / ${HOURS_IN_DAY})`
 
 const ITEM_CARDS = { Task: TaskCard, Event: EventCard, Reminder: ReminderCard }
 
+const styles = {
+    column:    'bg-indigo-950',
+    hourRow:   'border-b border-r border-white',
+    hourLabel: 'border-r border-white text-white font-bold',
+}
+
 export const DayColumn = ({ placed }) => {
     return (
-        <div className="relative h-full w-full bg-indigo-950">
+        <div className={`relative h-full w-full ${styles.column}`}>
             <List
                 items={HOURS}
                 keyExtractor={hour => hour}
@@ -22,8 +28,8 @@ export const DayColumn = ({ placed }) => {
                 className="h-full w-full"
             >
                 {hour => (
-                    <div className="h-full w-full flex border-b border-r border-white">
-                        <div className="h-full w-1/12 flex justify-center border-r border-white text-white font-bold">
+                    <div className={`h-full w-full flex ${styles.hourRow}`}>
+                        <div className={`h-full w-1/12 flex justify-center ${styles.hourLabel}`}>
                             {hour}
                         </div>
                     </div>

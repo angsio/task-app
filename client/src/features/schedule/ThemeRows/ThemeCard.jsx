@@ -3,6 +3,14 @@ import { useMutation } from '../../../hooks'
 import { ColorPicker } from '../../../components'
 import { useScheduleContext } from '../ScheduleContext'
 
+const styles = {
+    card:       'bg-slate-100 border-b border-black',
+    picker:     'hover:w-6 transition-[width] duration-200 ease-out',
+    visibleOn:  'bg-purple-950',
+    visibleOff: 'bg-purple-500',
+    name:       'text-xl',
+}
+
 export const ThemeCard = ({ theme }) => {
 
     const { mutate: updateThemeMutation } = useMutation(updateTheme)
@@ -24,18 +32,18 @@ export const ThemeCard = ({ theme }) => {
     }
 
     return (
-        <div className="h-full w-full relative flex flex-row items-center bg-slate-100 border-b border-black">
+        <div className={`relative h-full w-full flex flex-row items-center ${styles.card}`}>
             <ColorPicker
                 color={theme.color}
                 onChange={runSetThemeColor}
-                className="absolute right-0 h-full w-4 hover:w-6 transition-[width] duration-200 ease-out"
+                className={`absolute right-0 h-full w-4 ${styles.picker}`}
             />
             <button
                 type="button"
-                className={`absolute left-4 h-4 w-4 ${theme.visible ? 'bg-purple-950' : 'bg-purple-500'}`}
+                className={`absolute left-4 h-4 w-4 ${theme.visible ? styles.visibleOn : styles.visibleOff}`}
                 onClick={runToggleThemeVisible}
             />
-            <div className="h-full w-full flex flex-row items-center justify-center text-xl">
+            <div className={`h-full w-full flex flex-row items-center justify-center ${styles.name}`}>
                 {theme.name}
             </div>
         </div>

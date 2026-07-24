@@ -1,18 +1,25 @@
 import { toHourMinute } from '../time'
 
+const styles = {
+    card:  'bg-slate-100',
+    body:  'text-sm',
+    label: 'font-bold',
+    title: 'truncate leading-6',
+}
+
 export const ReminderCard = ({ item: reminder, color }) => {
     return (
-        <div className="h-full w-full relative flex flex-row bg-slate-100">
+        <div className={`relative h-full w-full flex flex-row ${styles.card}`}>
             <div
                 className="absolute left-0 h-full w-2"
                 style={{ backgroundColor: color }}
             />
-            <div className="h-full w-full flex flex-col pl-6">
-                <div className="text-sm truncate shrink-0 leading-6">
-                    <span className="font-bold">Reminder: </span>{reminder.title}
+            <div className={`h-full w-full flex flex-col pl-6 ${styles.body}`}>
+                <div className={`shrink-0 ${styles.title}`}>
+                    <span className={styles.label}>Reminder: </span>{reminder.title}
                 </div>
-                <div className="text-sm">
-                    <span className="font-bold">Time: </span>{toHourMinute(reminder.reminderTime)}
+                <div>
+                    <span className={styles.label}>Time: </span>{toHourMinute(reminder.reminderTime)}
                 </div>
             </div>
         </div>

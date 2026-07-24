@@ -14,6 +14,24 @@ const describeToolCall = (call) => {
 
 const pendingItems = (actions) => actions.flatMap(action => action.arguments.items ?? [])
 
+const styles = {
+    panel:        'bg-slate-300 border-b border-black',
+    hint:         'text-sm text-slate-500',
+    confirmBox:   'bg-white border border-black',
+    confirmTitle: 'text-sm font-bold',
+    itemList:     'text-sm list-disc',
+    primaryBtn:   'text-sm text-white bg-slate-700 disabled:opacity-50',
+    cancelBtn:    'text-sm bg-slate-200 disabled:opacity-50',
+    okText:       'text-sm text-green-700',
+    errText:      'text-sm text-red-600',
+    toolText:     'text-xs italic text-slate-500',
+    bubble:       'text-sm whitespace-pre-wrap',
+    userBg:       'bg-slate-100',
+    botBg:        'bg-white',
+    form:         'border-t border-black',
+    input:        'text-sm bg-slate-100 outline-none',
+}
+
 export const Agent = () => {
 
     const [prompt, setPrompt] = useState('')
@@ -61,10 +79,10 @@ export const Agent = () => {
     const cancelActions = (message) => updateMessage(message.id, { status: 'cancelled' })
 
     return (
-        <div className="h-3/5 w-full flex flex-col bg-slate-300 border-b border-black">
+        <div className={`h-3/5 w-full flex flex-col ${styles.panel}`}>
             <div className="h-full w-full overflow-y-auto py-2">
                 {messages.length === 0 && !loading && (
-                    <p className="px-3 text-sm text-slate-500">Ask the agent something.</p>
+                    <p className={`px-3 ${styles.hint}`}>Ask the agent something.</p>
                 )}
                 <List
                     items={messages}
@@ -78,29 +96,29 @@ export const Agent = () => {
                     {message => {
                         if (message.role === 'confirmation') return (
                             <div className="w-full flex justify-center">
-                                <div className="max-w-4/5 w-full flex flex-col gap-2 p-3 bg-white border border-black">
-                                    <p className="text-sm font-bold">Create these items?</p>
-                                    <ul className="text-sm list-disc pl-4">
+                                <div className={`max-w-4/5 w-full flex flex-col gap-2 p-3 ${styles.confirmBox}`}>
+                                    <p className={styles.confirmTitle}>Create these items?</p>
+                                    <ul className={`pl-4 ${styles.itemList}`}>
                                         {pendingItems(message.actions).map((item, index) => (
                                             <li key={index}>{item.title} — {item.itemType} in {item.theme}</li>
                                         ))}
                                     </ul>
                                     {message.status === 'pending' && (
                                         <div className="flex gap-2">
-                                            <button type="button" onClick={() => confirmActions(message)} disabled={executing} className="px-3 py-1 text-sm text-white bg-slate-700 disabled:opacity-50">Confirm</button>
-                                            <button type="button" onClick={() => cancelActions(message)} disabled={executing} className="px-3 py-1 text-sm bg-slate-200 disabled:opacity-50">Cancel</button>
+                                            <button type="button" onClick={() => confirmActions(message)} disabled={executing} className={`px-3 py-1 ${styles.primaryBtn}`}>Confirm</button>
+                                            <button type="button" onClick={() => cancelActions(message)} disabled={executing} className={`px-3 py-1 ${styles.cancelBtn}`}>Cancel</button>
                                         </div>
                                     )}
-                                    {message.status === 'confirmed' && <p className="text-sm text-green-700">Created.</p>}
-                                    {message.status === 'cancelled' && <p className="text-sm text-slate-500">Cancelled.</p>}
-                                    {message.status === 'error' && <p className="text-sm text-red-600">{message.note}</p>}
+                                    {message.status === 'confirmed' && <p className={styles.okText}>Created.</p>}
+                                    {message.status === 'cancelled' && <p className={styles.hint}>Cancelled.</p>}
+                                    {message.status === 'error' && <p className={styles.errText}>{message.note}</p>}
                                 </div>
                             </div>
                         )
 
                         if (message.role === 'tool') return (
                             <div className="w-full flex justify-start">
-                                <span className="max-w-4/5 px-2 text-xs italic text-slate-500">
+                                <span className={`max-w-4/5 px-2 ${styles.toolText}`}>
                                     {message.text}
                                 </span>
                             </div>
@@ -108,28 +126,28 @@ export const Agent = () => {
 
                         return (
                             <div className={`w-full flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <span className={`max-w-4/5 p-2 text-sm whitespace-pre-wrap ${message.role === 'user' ? 'bg-slate-100' : 'bg-white'}`}>
+                                <span className={`max-w-4/5 p-2 ${styles.bubble} ${message.role === 'user' ? styles.userBg : styles.botBg}`}>
                                     {message.text}
                                 </span>
                             </div>
                         )
                     }}
                 </List>
-                {loading && <p className="px-3 py-1 text-sm text-slate-500">Thinking...</p>}
+                {loading && <p className={`px-3 py-1 ${styles.hint}`}>Thinking...</p>}
             </div>
-            <form onSubmit={runSendPrompt} className="w-full flex border-t border-black">
+            <form onSubmit={runSendPrompt} className={`w-full flex ${styles.form}`}>
                 <input
                     type="text"
                     value={prompt}
                     onChange={event => setPrompt(event.target.value)}
                     disabled={loading}
                     placeholder="Send a prompt..."
-                    className="w-full p-2 text-sm bg-slate-100 outline-none"
+                    className={`w-full p-2 ${styles.input}`}
                 />
                 <button
                     type="submit"
                     disabled={loading || !prompt.trim()}
-                    className="px-4 text-sm text-white bg-slate-700 disabled:opacity-50"
+                    className={`px-4 ${styles.primaryBtn}`}
                 >
                     Send
                 </button>

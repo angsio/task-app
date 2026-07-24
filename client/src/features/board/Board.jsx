@@ -5,6 +5,10 @@ import { BoardProvider } from './BoardContext'
 import { ThemeColumn } from './ThemeColumn'
 import { CreateTheme } from './CreateTheme'
 
+const styles = {
+    board: 'bg-slate-100',
+}
+
 export const Board = () => {
     const themes = useCollection(getThemes)
     const items = useCollection(getItems)
@@ -32,7 +36,7 @@ export const Board = () => {
                         <CreateTheme />
                     </div>
                 }
-                className="h-full w-full overflow-y-auto p-2 bg-slate-100"
+                className={`h-full w-full p-2 overflow-y-auto ${styles.board}`}
             >
                 {theme => (
                     <ThemeColumn

@@ -6,6 +6,11 @@ import { useBoardContext } from './BoardContext'
 
 const ITEM_TYPES = ['Task', 'Event', 'Reminder']
 
+const styles = {
+    draft: 'bg-white',
+    field: 'text-center bg-white',
+}
+
 const defaultsFor = (type) => {
     if (type === 'Event') {
         const start = new Date()
@@ -49,7 +54,7 @@ export const CreateItem = ({ themeId }) => {
 
     if (type) {
         return (
-            <div className="w-full h-full p-4 bg-white">
+            <div className={`h-full w-full p-4 ${styles.draft}`}>
                 <EditableText
                     value=""
                     active
@@ -57,7 +62,7 @@ export const CreateItem = ({ themeId }) => {
                     onCancel={cancelCreateItem}
                     disabled={loading}
                     placeholder={`New ${type}`}
-                    inputClassName="h-full w-full text-center bg-white"
+                    inputClassName={`h-full w-full ${styles.field}`}
                 />
             </div>
         )
@@ -65,7 +70,7 @@ export const CreateItem = ({ themeId }) => {
 
     return (
         <select
-            className="h-full w-full text-center bg-white"
+            className={`h-full w-full ${styles.field}`}
             value=""
             onChange={(event) => setType(event.target.value)}
         >

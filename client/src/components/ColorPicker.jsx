@@ -7,6 +7,12 @@ const SWATCHES = [
     '#3b82f6', '#6366f1', '#a855f7', '#ec4899',
 ]
 
+const styles = {
+    popover: 'border border-black bg-white',
+    swatch:  'border border-black/20 hover:border-black',
+    custom:  'text-sm',
+}
+
 export const ColorPicker = ({ color, onChange, className = '' }) => {
     const [open, setOpen] = useState(false)
     const [anchor, setAnchor] = useState({ top: 0, bottom: undefined, right: 0 })
@@ -41,19 +47,19 @@ export const ColorPicker = ({ color, onChange, className = '' }) => {
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
                     <div
-                        className="fixed z-50 grid grid-cols-4 gap-2 border border-black bg-white p-3"
+                        className={`fixed z-50 grid grid-cols-4 gap-2 p-3 ${styles.popover}`}
                         style={{ top: anchor.top, bottom: anchor.bottom, right: anchor.right }}
                     >
                         {SWATCHES.map(swatch => (
                             <button
                                 key={swatch}
                                 type="button"
-                                className="h-8 w-8 border border-black/20 hover:border-black"
+                                className={`h-8 w-8 ${styles.swatch}`}
                                 style={{ backgroundColor: swatch }}
                                 onClick={() => choose(swatch)}
                             />
                         ))}
-                        <label className="col-span-4 flex items-center justify-between gap-2 pt-1 text-sm">
+                        <label className={`col-span-4 flex items-center justify-between gap-2 pt-1 ${styles.custom}`}>
                             Custom
                             <input
                                 type="color"

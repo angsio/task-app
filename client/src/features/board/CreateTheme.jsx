@@ -4,6 +4,12 @@ import { createTheme } from '../../api'
 import { EditableText } from '../../components'
 import { useBoardContext } from './BoardContext'
 
+const styles = {
+    draft:     'bg-slate-200',
+    createBtn: 'bg-green-400',
+    input:     'bg-white',
+}
+
 export const CreateTheme = () => {
     const [creating, setCreating] = useState(false)
 
@@ -27,10 +33,10 @@ export const CreateTheme = () => {
 
     if (!creating) {
         return (
-            <div className="h-[calc(10%+1rem)] w-full p-4 bg-slate-200">
-                <button 
+            <div className={`h-[calc(10%+1rem)] w-full p-4 ${styles.draft}`}>
+                <button
                     type="button"
-                    className="h-full w-full bg-green-400"
+                    className={`h-full w-full ${styles.createBtn}`}
                     onClick={() => setCreating(true)}
                 >
                     New theme
@@ -40,7 +46,7 @@ export const CreateTheme = () => {
     }
 
     return (
-        <div className="h-[calc(10%+1rem)] w-full p-4 bg-slate-200">
+        <div className={`h-[calc(10%+1rem)] w-full p-4 ${styles.draft}`}>
             <EditableText
                 value=""
                 active
@@ -48,7 +54,7 @@ export const CreateTheme = () => {
                 onCancel={cancelCreateTheme}
                 disabled={loading}
                 placeholder="New theme"
-                inputClassName="h-full w-full bg-white px-4"
+                inputClassName={`h-full w-full px-4 ${styles.input}`}
             />
         </div>
     )

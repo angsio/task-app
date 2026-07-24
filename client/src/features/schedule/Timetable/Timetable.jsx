@@ -12,6 +12,11 @@ const HEADER_HEIGHT = `calc(100% * ${HEADER_HOURS / (HOURS_IN_DAY + HEADER_HOURS
 
 const DAY_LABEL = { weekday: 'short', day: 'numeric' }
 
+const styles = {
+    grid:   'bg-sky-800',
+    header: 'border-b border-r border-black bg-slate-200',
+}
+
 export const Timetable = ({ themes, items }) => {
     const visibleThemes = new Set(
         themes.filter(theme => theme.visible).map(theme => theme._id)
@@ -21,7 +26,7 @@ export const Timetable = ({ themes, items }) => {
     const themeColor = new Map(themes.map(theme => [theme._id, theme.color]))
 
     return (
-        <div className="h-full w-3/4 bg-sky-800">
+        <div className={`h-full w-3/4 ${styles.grid}`}>
             <List
                 items={weekDays()}
                 keyExtractor={dayKey}
@@ -40,7 +45,7 @@ export const Timetable = ({ themes, items }) => {
                     return (
                         <div className="h-full w-full flex flex-col" style={{ height: COLUMN_HEIGHT }}>
                             <div
-                                className="sticky top-0 z-1 flex items-center justify-center border-b border-r border-black bg-slate-200"
+                                className={`sticky top-0 z-1 flex items-center justify-center ${styles.header}`}
                                 style={{ height: HEADER_HEIGHT }}
                             >
                                 {day.toLocaleDateString(undefined, DAY_LABEL)}

@@ -3,6 +3,15 @@ import { useMutation } from '../../../../hooks'
 import { useScheduleContext } from '../../ScheduleContext'
 import { toHourMinute } from '../time'
 
+const styles = {
+    card:        'bg-slate-100',
+    body:        'text-sm',
+    label:       'font-bold',
+    title:       'truncate leading-6',
+    done:        'line-through',
+    completeBtn: 'text-left text-slate-500 hover:underline hover:cursor-pointer',
+}
+
 export const TaskCard = ({ item: task, color }) => {
 
     const { mutate: updateTaskMutation } = useMutation(updateItem)
@@ -16,21 +25,21 @@ export const TaskCard = ({ item: task, color }) => {
     }
 
     return (
-        <div className="h-full w-full relative flex flex-row bg-slate-100">
+        <div className={`relative h-full w-full flex flex-row ${styles.card}`}>
             <div
                 className="absolute left-0 h-full w-2"
                 style={{ backgroundColor: color }}
             />
-            <div className="h-full w-full flex flex-col pl-6">
-                <div className={`text-sm truncate shrink-0 leading-6 ${task.completed ? 'line-through' : '' }`}>
-                    <span className="font-bold">Task: </span>{task.title}
+            <div className={`h-full w-full flex flex-col pl-6 ${styles.body}`}>
+                <div className={`shrink-0 ${styles.title} ${task.completed ? styles.done : ''}`}>
+                    <span className={styles.label}>Task: </span>{task.title}
                 </div>
-                <div className={`text-sm ${task.completed ? 'line-through' : ''}`}>
-                    <span className="font-bold">Deadline: </span>{toHourMinute(task.deadline)}
+                <div className={task.completed ? styles.done : undefined}>
+                    <span className={styles.label}>Deadline: </span>{toHourMinute(task.deadline)}
                 </div>
                 <button
                     type="button"
-                    className="text-slate-500 text-left text-sm hover:underline hover:cursor-pointer"
+                    className={styles.completeBtn}
                     onClick={runToggleTaskCompleted}
                 >
                     Mark Complete

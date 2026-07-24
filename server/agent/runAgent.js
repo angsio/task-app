@@ -1,4 +1,4 @@
-import { chat, embed } from './useJetson.js'
+import { chat, embed } from './useBedrock.js'
 import { matchTools } from './useSupabase.js'
 import { listItems, listThemes, createItems } from './tools/index.js'
 
@@ -6,7 +6,10 @@ const SYSTEM_PROMPT =
 `You are a helpful assistant that manages items on a schedule. Never use emojis in your responses.
 You have access to a tool repository that let's you help the user with managing and reading their schedule.`
 
-const MIN_SIMILARITY = 0.6
+// Titan's cosine scores are compressed (~0.1-0.6, where nomic ran ~0.6-0.8): real
+// matches clear ~0.15+, off-topic prompts stay under ~0.11. Below this keeps no tool,
+// so the model just replies. Retune if the embedding model changes.
+const MIN_SIMILARITY = 0.12
 
 export const TOOLS = {
     [listItems.name]: listItems,
@@ -24,7 +27,7 @@ const toToolSpec = (tool) => ({
 })
 
 const selectTools = async (prompt) => {
-    const embedding = await embed(`search_query: ${prompt}`)
+    const embedding = await embed(prompt)
     const matches = await matchTools(embedding)
 
     return matches
@@ -37,12 +40,12 @@ const selectTools = async (prompt) => {
 const runToolCall = async (call) => {
     const tool = TOOLS[call.function.name]
     const result = tool
-        ? await tool.handler(call.function.arguments)
+        ? await tool.handler(JSON.parse(call.function.arguments))
         : { error: `Unknown tool: ${call.function.name}` }
 
     return {
         role: 'tool',
-        tool_name: call.function.name,
+        tool_call_id: call.id,
         content: JSON.stringify(result)
     }
 }
@@ -59,7 +62,7 @@ export const runAgent = async (prompt) => {
 
     const calls = answer.tool_calls.map(call => ({
         name: call.function.name,
-        arguments: call.function.arguments
+        arguments: JSON.parse(call.function.arguments)
     }))
 
     const pendingActions = calls.filter(call => TOOLS[call.name]?.confirm)

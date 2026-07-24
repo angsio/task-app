@@ -8,6 +8,14 @@ import { CreateItem } from './CreateItem'
 
 const ITEM_CARDS = { Task: TaskCard, Event: EventCard, Reminder: ReminderCard }
 
+const styles = {
+    column:    'bg-slate-300',
+    header:    'bg-slate-50',
+    input:     'bg-white',
+    editBtn:   'bg-slate-500',
+    deleteBtn: 'bg-red-500',
+}
+
 export const ThemeColumn = ({ theme, items }) => {
     const [renaming, setRenaming] = useState(false)
 
@@ -47,16 +55,16 @@ export const ThemeColumn = ({ theme, items }) => {
     }
 
     return (
-        <div className="h-full w-full flex flex-col p-2 bg-slate-300">
+        <div className={`h-full w-full flex flex-col p-2 ${styles.column}`}>
             <div className="h-1/10 w-full p-2">
-                <div className="h-full w-full flex flex-row items-center justify-between p-4 bg-slate-50">
+                <div className={`h-full w-full flex flex-row items-center justify-between p-4 ${styles.header}`}>
                     <EditableText
                         value={theme.name}
                         active={renaming}
                         onSubmit={submitRenameTheme}
                         onCancel={cancelRenameTheme}
                         disabled={updatingTheme || deletingTheme}
-                        inputClassName="bg-white"
+                        inputClassName={styles.input}
                     />
                     <div className="flex flex-row gap-4">
                         <ColorPicker
@@ -66,12 +74,12 @@ export const ThemeColumn = ({ theme, items }) => {
                         />
                         <button
                             type="button"
-                            className="h-4 w-4 bg-slate-500"
+                            className={`h-4 w-4 ${styles.editBtn}`}
                             onClick={() => setRenaming(true)}
                         />
                         <button
                             type="button"
-                            className="h-4 w-4 bg-red-500"
+                            className={`h-4 w-4 ${styles.deleteBtn}`}
                             onClick={runDeleteTheme}
                         />
                     </div>
