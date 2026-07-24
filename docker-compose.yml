@@ -1,0 +1,25 @@
+services:
+
+  taskapp-server:
+    build: ./server
+    container_name: taskapp-server
+    env_file:
+      - "./server/.env"
+    restart: unless-stopped
+    networks:
+      - web
+
+  taskapp-client:
+    build: ./client
+    container_name: taskapp-client
+    ports:
+      - "8082:80"
+    depends_on:
+      - taskapp-server
+    restart: unless-stopped
+    networks:
+      - web
+
+networks:
+  web:
+    external: true

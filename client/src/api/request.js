@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api'
+const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
 export const request = async (path, { method, body } = {}) => {
     if (!method) throw new Error(`request(${path}) needs an explicit method`)
