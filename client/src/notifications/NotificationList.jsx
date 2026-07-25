@@ -6,11 +6,11 @@ export const NotificationList = () => {
     const { notifications, dismiss } = useNotifications()
 
     return (
-        <div className="fixed bottom-0 right-0 z-50 flex flex-col gap-4 p-10">
+        <div className="fixed bottom-0 right-0 z-50 flex flex-col gap-4 p-10 pointer-events-none">
             {notifications.map((notification) => (
                 <div
                     key={notification.id}
-                    className="border bg-white p-4"
+                    className="border bg-white p-4 pointer-events-auto"
                     onClick={() => dismiss(notification.id)}
                 >
                     {notification.message}
