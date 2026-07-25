@@ -1,1 +1,62 @@
 @import "tailwindcss";
+
+@theme {
+  --color-void: #0b0f1e;
+  --color-obsidian: #151a2e;
+  --color-crypt: #1e2540;
+  --color-elevated: #27304f;
+  --color-border: #333a60;
+
+  --color-parchment: #edf0fa;
+  --color-parchment-dim: #b3bcdc;
+  --color-ash: #767fa6;
+
+  --color-accent: #8bacff;
+  --color-accent-bright: #b8d0ff;
+  --color-accent-violet: #ac8ce0;
+  --color-accent-teal: #58acc4;
+  --color-danger: #f6849b;
+
+  --font-display: 'Philosopher', 'Iowan Old Style', 'Palatino Linotype',
+    Palatino, 'Book Antiqua', 'Hoefler Text', Georgia, serif;
+  --font-body: 'Philosopher', 'Iowan Old Style', 'Palatino Linotype', Palatino,
+    Georgia, serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-void);
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(139, 172, 255, 0.16), transparent 60%),
+    radial-gradient(ellipse 70% 60% at 90% 100%, rgba(88, 172, 196, 0.1), transparent 60%);
+  background-attachment: fixed;
+  color: var(--color-parchment);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  height: 100%;
+}
+
+::selection {
+  background: rgba(139, 172, 255, 0.32);
+  color: var(--color-parchment);
+}
+
+::placeholder {
+  color: var(--color-ash);
+}

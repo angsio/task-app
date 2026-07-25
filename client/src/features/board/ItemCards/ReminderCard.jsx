@@ -6,12 +6,15 @@ import { useBoardContext } from '../BoardContext'
 import { toDateTimeLocal } from './timeUtils'
 
 const styles = {
-    card:       'bg-white',
-    input:      'bg-white',
-    editBtn:    'bg-slate-500',
-    deleteBtn:  'bg-red-500',
-    field:      'bg-slate-300',
-    fieldInput: 'text-center bg-slate-300',
+    card:       'bg-crypt border border-border rounded-md',
+    label:      'font-display text-accent-violet',
+    title:      'text-parchment',
+    input:      'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
+    editBtn:    'rounded-sm bg-accent-violet/80 transition-colors hover:bg-accent-violet',
+    deleteBtn:  'rounded-sm bg-danger/80 transition-colors hover:bg-danger',
+    meta:       'text-parchment-dim',
+    field:      'bg-void border border-border rounded-md',
+    fieldInput: 'bg-transparent text-center text-parchment focus:outline-none',
 }
 
 export const ReminderCard = ({ item }) => {
@@ -54,15 +57,17 @@ export const ReminderCard = ({ item }) => {
     return (
         <div className={`h-full w-full flex flex-col p-4 ${styles.card}`}>
             <div className="h-1/5 w-full flex flex-row items-center justify-between">
-                <div className="flex items-center gap-1">
-                    <span>Reminder:</span>
+                <div className="flex-1 min-w-0 flex items-center gap-1">
+                    <span className={styles.label}>Reminder:</span>
                     <EditableText
                         value={item.title}
                         active={renaming}
                         onSubmit={submitRenameReminder}
                         onCancel={cancelRenameReminder}
                         disabled={updatingItem || deletingItem}
-                        inputClassName={`flex-1 ${styles.input}`}
+                        maxLength={60}
+                        className={`flex-1 min-w-0 ${styles.title}`}
+                        inputClassName={styles.input}
                     />
                 </div>
                 <div className="flex flex-row gap-4">
@@ -80,7 +85,7 @@ export const ReminderCard = ({ item }) => {
             </div>
             <div className="h-4/5 w-full flex items-center pt-4">
                 <div className={`h-1/2 w-full flex flex-row items-center pl-4 ${styles.field}`}>
-                    <span className="w-1/4">Time:</span>
+                    <span className={`w-1/4 ${styles.meta}`}>Time:</span>
                     <input
                         type="datetime-local"
                         className={`h-full w-3/4 ${styles.fieldInput}`}

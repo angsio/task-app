@@ -10,9 +10,9 @@ const HOUR_HEIGHT = `calc(100% / ${HOURS_IN_DAY})`
 const ITEM_CARDS = { Task: TaskCard, Event: EventCard, Reminder: ReminderCard }
 
 const styles = {
-    column:    'bg-indigo-950',
-    hourRow:   'border-b border-r border-white',
-    hourLabel: 'border-r border-white text-white font-bold',
+    column:    'bg-void',
+    hourRow:   'border-b border-r border-border/40',
+    hourLabel: 'border-r border-border/40 text-ash font-display',
 }
 
 export const DayColumn = ({ placed }) => {

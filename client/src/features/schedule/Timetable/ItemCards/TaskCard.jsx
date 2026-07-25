@@ -4,12 +4,12 @@ import { useScheduleContext } from '../../ScheduleContext'
 import { toHourMinute } from '../time'
 
 const styles = {
-    card:        'bg-slate-100',
-    body:        'text-sm',
-    label:       'font-bold',
+    card:        'bg-crypt border border-border rounded-sm',
+    body:        'text-sm text-parchment',
+    label:       'font-display text-parchment-dim',
     title:       'truncate leading-6',
-    done:        'line-through',
-    completeBtn: 'text-left text-slate-500 hover:underline hover:cursor-pointer',
+    done:        'text-ash line-through',
+    completeBtn: 'text-left text-accent transition-colors hover:text-accent-bright hover:cursor-pointer',
 }
 
 export const TaskCard = ({ item: task, color }) => {

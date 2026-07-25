@@ -2,8 +2,7 @@ import { List } from '../../../components'
 import { ThemeCard } from './ThemeCard'
 
 const styles = {
-    container: 'bg-sky-200',
-    list:      'bg-blue-600',
+    container: 'bg-obsidian',
 }
 
 export const ThemeRows = ({ themes }) => {
@@ -15,7 +14,7 @@ export const ThemeRows = ({ themes }) => {
                 flow="x"
                 slots={1}
                 autoSize="20%"
-                className={`h-full w-full overflow-y-auto scrollbar-none ${styles.list}`}
+                className="h-full w-full overflow-y-auto scrollbar-none"
                 itemClassName=""
             >
                 {theme => <ThemeCard theme={theme} />}

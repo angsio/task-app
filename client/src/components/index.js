@@ -1,5 +1,4 @@
 export { Navbar } from './Navbar'
-export { Footer } from './Footer'
 export { List } from './List'
 export { EditableText } from './EditableText'
 export { ColorPicker } from './ColorPicker'

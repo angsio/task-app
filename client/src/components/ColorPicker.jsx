@@ -8,9 +8,9 @@ const SWATCHES = [
 ]
 
 const styles = {
-    popover: 'border border-black bg-white',
-    swatch:  'border border-black/20 hover:border-black',
-    custom:  'text-sm',
+    popover: 'border border-border bg-obsidian rounded-md',
+    swatch:  'rounded-sm border border-border/60 transition-colors hover:border-accent',
+    custom:  'text-sm text-parchment-dim',
 }
 
 export const ColorPicker = ({ color, onChange, className = '' }) => {

@@ -1,9 +1,9 @@
 import { toHourMinute } from '../time'
 
 const styles = {
-    card:  'bg-slate-100',
-    body:  'text-sm',
-    label: 'font-bold',
+    card:  'bg-crypt border border-border rounded-sm',
+    body:  'text-sm text-parchment',
+    label: 'font-display text-parchment-dim',
     title: 'truncate leading-6',
 }
 

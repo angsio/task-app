@@ -13,8 +13,8 @@ const HEADER_HEIGHT = `calc(100% * ${HEADER_HOURS / (HOURS_IN_DAY + HEADER_HOURS
 const DAY_LABEL = { weekday: 'short', day: 'numeric' }
 
 const styles = {
-    grid:   'bg-sky-800',
-    header: 'border-b border-r border-black bg-slate-200',
+    grid:   'bg-void',
+    header: 'border-b border-r border-border bg-obsidian font-display text-parchment-dim',
 }
 
 export const Timetable = ({ themes, items }) => {

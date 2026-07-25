@@ -9,11 +9,12 @@ import { CreateItem } from './CreateItem'
 const ITEM_CARDS = { Task: TaskCard, Event: EventCard, Reminder: ReminderCard }
 
 const styles = {
-    column:    'bg-slate-300',
-    header:    'bg-slate-50',
-    input:     'bg-white',
-    editBtn:   'bg-slate-500',
-    deleteBtn: 'bg-red-500',
+    column:    'bg-obsidian border border-border rounded-lg',
+    header:    'bg-crypt border border-border rounded-md',
+    name:      'font-display text-parchment',
+    input:     'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
+    editBtn:   'rounded-sm bg-accent-violet/80 transition-colors hover:bg-accent-violet',
+    deleteBtn: 'rounded-sm bg-danger/80 transition-colors hover:bg-danger',
 }
 
 export const ThemeColumn = ({ theme, items }) => {
@@ -57,20 +58,22 @@ export const ThemeColumn = ({ theme, items }) => {
     return (
         <div className={`h-full w-full flex flex-col p-2 ${styles.column}`}>
             <div className="h-1/10 w-full p-2">
-                <div className={`h-full w-full flex flex-row items-center justify-between p-4 ${styles.header}`}>
+                <div className={`h-full w-full flex flex-row items-center justify-between p-4 gap-4 ${styles.header}`}>
                     <EditableText
                         value={theme.name}
                         active={renaming}
                         onSubmit={submitRenameTheme}
                         onCancel={cancelRenameTheme}
                         disabled={updatingTheme || deletingTheme}
+                        maxLength={40}
+                        className={`flex-1 min-w-0 ${styles.name}`}
                         inputClassName={styles.input}
                     />
                     <div className="flex flex-row gap-4">
                         <ColorPicker
                             color={theme.color}
                             onChange={runSetThemeColor}
-                            className="h-4 w-4"
+                            className="h-4 w-4 rounded-sm"
                         />
                         <button
                             type="button"

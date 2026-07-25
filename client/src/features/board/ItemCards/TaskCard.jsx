@@ -6,16 +6,19 @@ import { useBoardContext } from '../BoardContext'
 import { toDateTimeLocal } from './timeUtils'
 
 const styles = {
-    card:        'bg-white',
-    input:       'bg-white',
-    editBtn:     'bg-slate-500',
-    deleteBtn:   'bg-red-500',
-    timeRow:     'bg-slate-300',
-    timeInput:   'text-center bg-slate-300',
-    deadlineOn:  'bg-orange-500',
-    deadlineOff: 'bg-orange-200',
-    doneOn:      'bg-green-500',
-    doneOff:     'bg-green-200',
+    card:        'bg-crypt border border-border rounded-md',
+    label:       'font-display text-accent',
+    title:       'text-parchment',
+    input:       'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
+    editBtn:     'rounded-sm bg-accent-violet/80 transition-colors hover:bg-accent-violet',
+    deleteBtn:   'rounded-sm bg-danger/80 transition-colors hover:bg-danger',
+    meta:        'text-parchment-dim',
+    timeRow:     'bg-void border border-border rounded-md',
+    timeInput:   'bg-transparent text-center text-parchment focus:outline-none',
+    deadlineOn:  'rounded-sm bg-accent-teal',
+    deadlineOff: 'rounded-sm bg-border',
+    doneOn:      'rounded-sm bg-accent',
+    doneOff:     'rounded-sm bg-border',
 }
 
 export const TaskCard = ({ item }) => {
@@ -72,15 +75,17 @@ export const TaskCard = ({ item }) => {
     return (
         <div className={`h-full w-full flex flex-col p-4 ${styles.card}`}>
             <div className="h-1/5 w-full flex flex-row items-center justify-between">
-                <div className="flex items-center gap-1">
-                    <span>Task:</span>
+                <div className="flex-1 min-w-0 flex items-center gap-1">
+                    <span className={styles.label}>Task:</span>
                     <EditableText
                         value={item.title}
                         active={renaming}
                         onSubmit={submitRenameTask}
                         onCancel={cancelRenameTask}
                         disabled={updatingItem || deletingItem}
-                        inputClassName={`flex-1 ${styles.input}`}
+                        maxLength={60}
+                        className={`flex-1 min-w-0 ${styles.title}`}
+                        inputClassName={styles.input}
                     />
                 </div>
                 <div className="flex flex-row gap-4">
@@ -100,7 +105,7 @@ export const TaskCard = ({ item }) => {
                 <div className="h-1/2 w-full">
                     {item.hasDeadline && (
                         <div className={`h-full w-full flex flex-row items-center pl-4 ${styles.timeRow}`}>
-                            <span className="w-1/4">Time:</span>
+                            <span className={`w-1/4 ${styles.meta}`}>Time:</span>
                             <input
                                 type="datetime-local"
                                 className={`h-full w-3/4 ${styles.timeInput}`}
@@ -119,7 +124,7 @@ export const TaskCard = ({ item }) => {
                             onClick={runToggleTaskHasDeadline}
                             disabled={updatingItem}
                         />
-                        <span>Has Deadline</span>
+                        <span className={styles.meta}>Has Deadline</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
@@ -128,7 +133,7 @@ export const TaskCard = ({ item }) => {
                             onClick={runToggleTaskCompleted}
                             disabled={updatingItem}
                         />
-                        <span>Completed</span>
+                        <span className={styles.meta}>Completed</span>
                     </div>
                 </div>
             </div>

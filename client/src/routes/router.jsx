@@ -1,20 +1,15 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { FixedNavbarFixedFooterLayout, FixedNavbarLayout } from '../layouts'
+import { FixedNavbarLayout } from '../layouts'
 import { BoardPage, SchedulePage } from '../pages'
 
 export const router = createBrowserRouter([
     {
         path: '/',
-        element: <FixedNavbarFixedFooterLayout />,
+        element: <FixedNavbarLayout />,
         children: [
             { index: true, element: <Navigate to="/board" replace /> },
             { path: 'board', element: <BoardPage /> },
-        ],
-    },
-    {
-        element: <FixedNavbarLayout />,
-        children: [
-            { path: '/schedule', element: <SchedulePage /> },
+            { path: 'schedule', element: <SchedulePage /> },
         ],
     },
 ])

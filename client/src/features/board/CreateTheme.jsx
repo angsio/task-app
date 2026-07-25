@@ -5,9 +5,9 @@ import { EditableText } from '../../components'
 import { useBoardContext } from './BoardContext'
 
 const styles = {
-    draft:     'bg-slate-200',
-    createBtn: 'bg-green-400',
-    input:     'bg-white',
+    draft:     'bg-obsidian/60 border border-dashed border-border rounded-lg',
+    createBtn: 'font-display text-parchment-dim transition-colors hover:text-accent-bright',
+    input:     'h-full bg-transparent px-2 text-parchment focus:outline-none',
 }
 
 export const CreateTheme = () => {
@@ -39,7 +39,7 @@ export const CreateTheme = () => {
                     className={`h-full w-full ${styles.createBtn}`}
                     onClick={() => setCreating(true)}
                 >
-                    New theme
+                    + New theme
                 </button>
             </div>
         )
@@ -54,7 +54,9 @@ export const CreateTheme = () => {
                 onCancel={cancelCreateTheme}
                 disabled={loading}
                 placeholder="New theme"
-                inputClassName={`h-full w-full px-4 ${styles.input}`}
+                maxLength={40}
+                className="h-full w-full"
+                inputClassName={styles.input}
             />
         </div>
     )

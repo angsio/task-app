@@ -4,11 +4,11 @@ import { ColorPicker } from '../../../components'
 import { useScheduleContext } from '../ScheduleContext'
 
 const styles = {
-    card:       'bg-slate-100 border-b border-black',
-    picker:     'hover:w-6 transition-[width] duration-200 ease-out',
-    visibleOn:  'bg-purple-950',
-    visibleOff: 'bg-purple-500',
-    name:       'text-xl',
+    card:       'bg-crypt border-b border-border',
+    picker:     'rounded-l-sm hover:w-6 transition-[width] duration-200 ease-out',
+    visibleOn:  'rounded-sm bg-accent-violet',
+    visibleOff: 'rounded-sm bg-border',
+    name:       'font-display text-lg text-parchment',
 }
 
 export const ThemeCard = ({ theme }) => {
@@ -43,8 +43,8 @@ export const ThemeCard = ({ theme }) => {
                 className={`absolute left-4 h-4 w-4 ${theme.visible ? styles.visibleOn : styles.visibleOff}`}
                 onClick={runToggleThemeVisible}
             />
-            <div className={`h-full w-full flex flex-row items-center justify-center ${styles.name}`}>
-                {theme.name}
+            <div className="h-full w-full flex flex-row items-center justify-center px-8">
+                <span className={`min-w-0 truncate ${styles.name}`}>{theme.name}</span>
             </div>
         </div>
 )}

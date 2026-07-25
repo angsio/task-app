@@ -6,16 +6,17 @@ import { ThemeColumn } from './ThemeColumn'
 import { CreateTheme } from './CreateTheme'
 
 const styles = {
-    board: 'bg-slate-100',
+    notice: 'text-parchment-dim',
+    error:  'text-danger',
 }
 
 export const Board = () => {
     const themes = useCollection(getThemes)
     const items = useCollection(getItems)
 
-    if (themes.error) return <p className="p-10">Error: {themes.error.message}</p>
-    if (items.error) return <p className="p-10">Error: {items.error.message}</p>
-    if (!themes.data || !items.data) return <p className="p-10">Loading...</p>
+    if (themes.error) return <p className={`p-10 ${styles.error}`}>Error: {themes.error.message}</p>
+    if (items.error) return <p className={`p-10 ${styles.error}`}>Error: {items.error.message}</p>
+    if (!themes.data || !items.data) return <p className={`p-10 ${styles.notice}`}>Loading...</p>
 
     return (
         <BoardProvider value={{
@@ -36,7 +37,7 @@ export const Board = () => {
                         <CreateTheme />
                     </div>
                 }
-                className={`h-full w-full p-2 overflow-y-auto ${styles.board}`}
+                className="h-full w-full p-2 overflow-y-auto"
             >
                 {theme => (
                     <ThemeColumn

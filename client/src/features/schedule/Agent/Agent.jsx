@@ -33,19 +33,19 @@ const toBubbles = (messages) => {
 const pendingItems = (pending) => pending.flatMap(call => call.arguments.items ?? [])
 
 const styles = {
-    panel:        'bg-slate-300 border-b border-black',
-    hint:         'text-sm text-slate-500',
-    toolText:     'text-xs italic text-slate-500',
-    bubble:       'text-sm whitespace-pre-wrap',
-    userBg:       'bg-slate-100',
-    botBg:        'bg-white',
-    confirmBox:   'bg-white border border-black',
-    confirmTitle: 'text-sm font-bold',
-    itemList:     'text-sm list-disc',
-    form:         'border-t border-black',
-    input:        'text-sm bg-slate-100 outline-none',
-    primaryBtn:   'text-sm text-white bg-slate-700 disabled:opacity-50',
-    cancelBtn:    'text-sm bg-slate-200 disabled:opacity-50',
+    panel:        'bg-obsidian border-b border-border',
+    hint:         'text-sm text-ash',
+    toolText:     'text-xs italic text-ash',
+    bubble:       'text-sm whitespace-pre-wrap rounded-md',
+    userBg:       'border border-accent/20 bg-accent/10 text-parchment',
+    botBg:        'border border-border bg-crypt text-parchment',
+    confirmBox:   'border border-border bg-crypt rounded-md',
+    confirmTitle: 'font-display text-sm text-parchment',
+    itemList:     'text-sm text-parchment-dim list-disc',
+    form:         'border-t border-border',
+    input:        'text-sm text-parchment bg-void outline-none',
+    primaryBtn:   'rounded-md border border-accent/50 bg-accent/10 text-sm font-display text-accent-bright transition-colors hover:bg-accent/20 disabled:opacity-50',
+    cancelBtn:    'rounded-md border border-border text-sm font-display text-parchment-dim transition-colors hover:text-parchment disabled:opacity-50',
 }
 
 export const Agent = () => {
