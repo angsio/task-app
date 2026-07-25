@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { EditableText } from '../../../components'
+import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { EditableText, IconButton } from '../../../components'
 import { useBoardContext } from '../BoardContext'
 import { toDateTimeLocal } from './timeUtils'
 
@@ -10,8 +11,8 @@ const styles = {
     label:      'font-display text-accent-violet',
     title:      'text-parchment',
     input:      'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
-    editBtn:    'rounded-sm bg-accent-violet/80 transition-colors hover:bg-accent-violet',
-    deleteBtn:  'rounded-sm bg-danger/80 transition-colors hover:bg-danger',
+    editBtn:    'text-parchment-dim transition-colors hover:text-accent-bright',
+    deleteBtn:  'text-parchment-dim transition-colors hover:text-danger',
     meta:       'text-parchment-dim',
     field:      'bg-void border border-border rounded-md',
     fieldInput: 'bg-transparent text-center text-parchment focus:outline-none',
@@ -71,20 +72,12 @@ export const ReminderCard = ({ item }) => {
                     />
                 </div>
                 <div className="flex flex-row gap-4">
-                    <button
-                        type="button"
-                        className={`h-4 w-4 ${styles.editBtn}`}
-                        onClick={() => setRenaming(true)}
-                    />
-                    <button
-                        type="button"
-                        className={`h-4 w-4 ${styles.deleteBtn}`}
-                        onClick={runDeleteReminder}
-                    />
+                    <IconButton icon={faPen} title="Rename" onClick={() => setRenaming(true)} className={styles.editBtn} />
+                    <IconButton icon={faTrash} title="Delete" onClick={runDeleteReminder} className={styles.deleteBtn} />
                 </div>
             </div>
             <div className="h-4/5 w-full flex items-center pt-4">
-                <div className={`h-1/2 w-full flex flex-row items-center pl-4 ${styles.field}`}>
+                <div className={`h-1/2 w-full flex flex-row items-center px-4 ${styles.field}`}>
                     <span className={`w-1/4 ${styles.meta}`}>Time:</span>
                     <input
                         type="datetime-local"

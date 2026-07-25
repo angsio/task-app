@@ -14,7 +14,7 @@ export const ThemeRows = ({ themes }) => {
                 flow="x"
                 slots={1}
                 autoSize="20%"
-                className="h-full w-full overflow-y-auto scrollbar-none"
+                className="h-full w-full overflow-y-auto overscroll-none scrollbar-none"
                 itemClassName=""
             >
                 {theme => <ThemeCard theme={theme} />}

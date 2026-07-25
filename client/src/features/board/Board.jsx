@@ -37,7 +37,7 @@ export const Board = () => {
                         <CreateTheme />
                     </div>
                 }
-                className="h-full w-full p-2 overflow-y-auto"
+                className="h-full w-full p-2 overflow-y-auto overscroll-none"
             >
                 {theme => (
                     <ThemeColumn

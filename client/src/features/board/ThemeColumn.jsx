@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { updateTheme, deleteTheme } from '../../api'
 import { useMutation } from '../../hooks'
-import { EditableText, List, ColorPicker } from '../../components'
+import { EditableText, List, ColorPicker, IconButton } from '../../components'
 import { useBoardContext } from './BoardContext'
 import { TaskCard, EventCard, ReminderCard } from './ItemCards'
 import { CreateItem } from './CreateItem'
@@ -13,8 +14,8 @@ const styles = {
     header:    'bg-crypt border border-border rounded-md',
     name:      'font-display text-parchment',
     input:     'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
-    editBtn:   'rounded-sm bg-accent-violet/80 transition-colors hover:bg-accent-violet',
-    deleteBtn: 'rounded-sm bg-danger/80 transition-colors hover:bg-danger',
+    editBtn:   'text-parchment-dim transition-colors hover:text-accent-bright',
+    deleteBtn: 'text-parchment-dim transition-colors hover:text-danger',
 }
 
 export const ThemeColumn = ({ theme, items }) => {
@@ -69,22 +70,14 @@ export const ThemeColumn = ({ theme, items }) => {
                         className={`flex-1 min-w-0 ${styles.name}`}
                         inputClassName={styles.input}
                     />
-                    <div className="flex flex-row gap-4">
+                    <div className="flex flex-row items-center gap-4">
                         <ColorPicker
                             color={theme.color}
                             onChange={runSetThemeColor}
                             className="h-4 w-4 rounded-sm"
                         />
-                        <button
-                            type="button"
-                            className={`h-4 w-4 ${styles.editBtn}`}
-                            onClick={() => setRenaming(true)}
-                        />
-                        <button
-                            type="button"
-                            className={`h-4 w-4 ${styles.deleteBtn}`}
-                            onClick={runDeleteTheme}
-                        />
+                        <IconButton icon={faPen} title="Rename" onClick={() => setRenaming(true)} className={styles.editBtn} />
+                        <IconButton icon={faTrash} title="Delete" onClick={runDeleteTheme} className={styles.deleteBtn} />
                     </div>
                 </div>
             </div>
@@ -94,7 +87,7 @@ export const ThemeColumn = ({ theme, items }) => {
                 flow="x"
                 slots={1}
                 autoSize="25%"
-                className="h-8/10 w-full overflow-y-auto"
+                className="h-8/10 w-full overflow-y-auto overscroll-none"
             >
                 {item => {
                     const Card = ITEM_CARDS[item.itemType]

@@ -34,7 +34,7 @@ export const Timetable = ({ themes, items }) => {
                 slots={1}
                 autoSize={`calc(100% / ${VISIBLE_DAYS})`}
                 itemClassName=""
-                className="h-full w-full overflow-auto scrollbar-none"
+                className="h-full w-full overflow-auto overscroll-none scrollbar-none"
             >
                 {day => {
                     const placed = (placedByDay.get(dayKey(day)) ?? []).map(entry => ({

@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faPaperPlane } from '@fortawesome/free-solid-svg-icons'
 
 import { sendMessages, resolveActions } from '../../../api'
 import { useMutation } from '../../../hooks'
@@ -85,7 +87,7 @@ export const Agent = () => {
 
     return (
         <div className={`h-3/5 w-full flex flex-col ${styles.panel}`}>
-            <div className="h-full w-full overflow-y-auto py-2">
+            <div className="h-full w-full overflow-y-auto overscroll-none py-2">
                 {bubbles.length === 0 && !busy && (
                     <p className={`px-3 ${styles.hint}`}>Ask the agent something.</p>
                 )}
@@ -146,9 +148,11 @@ export const Agent = () => {
                 <button
                     type="submit"
                     disabled={busy || !input.trim()}
+                    title="Send"
+                    aria-label="Send"
                     className={`px-4 ${styles.primaryBtn}`}
                 >
-                    Send
+                    <FontAwesomeIcon icon={faPaperPlane} />
                 </button>
             </form>
         </div>

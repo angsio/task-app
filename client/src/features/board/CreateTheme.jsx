@@ -39,7 +39,7 @@ export const CreateTheme = () => {
                     className={`h-full w-full ${styles.createBtn}`}
                     onClick={() => setCreating(true)}
                 >
-                    + New theme
+                    + New Theme
                 </button>
             </div>
         )

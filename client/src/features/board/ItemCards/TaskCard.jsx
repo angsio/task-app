@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { EditableText } from '../../../components'
+import { faPen, faTrash, faClock, faCheck } from '@fortawesome/free-solid-svg-icons'
+import { EditableText, IconButton } from '../../../components'
 import { useBoardContext } from '../BoardContext'
 import { toDateTimeLocal } from './timeUtils'
 
@@ -10,15 +11,15 @@ const styles = {
     label:       'font-display text-accent',
     title:       'text-parchment',
     input:       'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
-    editBtn:     'rounded-sm bg-accent-violet/80 transition-colors hover:bg-accent-violet',
-    deleteBtn:   'rounded-sm bg-danger/80 transition-colors hover:bg-danger',
+    editBtn:     'text-parchment-dim transition-colors hover:text-accent-bright',
+    deleteBtn:   'text-parchment-dim transition-colors hover:text-danger',
     meta:        'text-parchment-dim',
     timeRow:     'bg-void border border-border rounded-md',
     timeInput:   'bg-transparent text-center text-parchment focus:outline-none',
-    deadlineOn:  'rounded-sm bg-accent-teal',
-    deadlineOff: 'rounded-sm bg-border',
-    doneOn:      'rounded-sm bg-accent',
-    doneOff:     'rounded-sm bg-border',
+    deadlineOn:  'text-accent-teal transition-colors',
+    deadlineOff: 'text-ash transition-colors hover:text-parchment-dim',
+    doneOn:      'text-accent transition-colors',
+    doneOff:     'text-ash transition-colors hover:text-parchment-dim',
 }
 
 export const TaskCard = ({ item }) => {
@@ -89,22 +90,14 @@ export const TaskCard = ({ item }) => {
                     />
                 </div>
                 <div className="flex flex-row gap-4">
-                    <button
-                        type="button"
-                        className={`h-4 w-4 ${styles.editBtn}`}
-                        onClick={() => setRenaming(true)}
-                    />
-                    <button
-                        type="button"
-                        className={`h-4 w-4 ${styles.deleteBtn}`}
-                        onClick={runDeleteTask}
-                    />
+                    <IconButton icon={faPen} title="Rename" onClick={() => setRenaming(true)} className={styles.editBtn} />
+                    <IconButton icon={faTrash} title="Delete" onClick={runDeleteTask} className={styles.deleteBtn} />
                 </div>
             </div>
             <div className="h-4/5 w-full flex flex-col pt-4">
                 <div className="h-1/2 w-full">
                     {item.hasDeadline && (
-                        <div className={`h-full w-full flex flex-row items-center pl-4 ${styles.timeRow}`}>
+                        <div className={`h-full w-full flex flex-row items-center px-4 ${styles.timeRow}`}>
                             <span className={`w-1/4 ${styles.meta}`}>Time:</span>
                             <input
                                 type="datetime-local"
@@ -117,24 +110,20 @@ export const TaskCard = ({ item }) => {
                     )}
                 </div>
                 <div className="h-1/2 w-full flex items-end gap-4">
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            className={`h-4 w-4 ${item.hasDeadline ? styles.deadlineOn : styles.deadlineOff}`}
-                            onClick={runToggleTaskHasDeadline}
-                            disabled={updatingItem}
-                        />
-                        <span className={styles.meta}>Has Deadline</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            className={`h-4 w-4 ${item.completed ? styles.doneOn : styles.doneOff}`}
-                            onClick={runToggleTaskCompleted}
-                            disabled={updatingItem}
-                        />
-                        <span className={styles.meta}>Completed</span>
-                    </div>
+                    <IconButton
+                        icon={faClock}
+                        title="Has deadline"
+                        onClick={runToggleTaskHasDeadline}
+                        disabled={updatingItem}
+                        className={item.hasDeadline ? styles.deadlineOn : styles.deadlineOff}
+                    />
+                    <IconButton
+                        icon={faCheck}
+                        title="Completed"
+                        onClick={runToggleTaskCompleted}
+                        disabled={updatingItem}
+                        className={item.completed ? styles.doneOn : styles.doneOff}
+                    />
                 </div>
             </div>
         </div>

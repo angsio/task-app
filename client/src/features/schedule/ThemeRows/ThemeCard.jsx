@@ -1,13 +1,14 @@
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { updateTheme } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { ColorPicker } from '../../../components'
+import { ColorPicker, IconButton } from '../../../components'
 import { useScheduleContext } from '../ScheduleContext'
 
 const styles = {
     card:       'bg-crypt border-b border-border',
     picker:     'rounded-l-sm hover:w-6 transition-[width] duration-200 ease-out',
-    visibleOn:  'rounded-sm bg-accent-violet',
-    visibleOff: 'rounded-sm bg-border',
+    visibleOn:  'text-accent-violet transition-colors',
+    visibleOff: 'text-ash transition-colors hover:text-parchment-dim',
     name:       'font-display text-lg text-parchment',
 }
 
@@ -38,10 +39,11 @@ export const ThemeCard = ({ theme }) => {
                 onChange={runSetThemeColor}
                 className={`absolute right-0 h-full w-4 ${styles.picker}`}
             />
-            <button
-                type="button"
-                className={`absolute left-4 h-4 w-4 ${theme.visible ? styles.visibleOn : styles.visibleOff}`}
+            <IconButton
+                icon={theme.visible ? faEye : faEyeSlash}
+                title={theme.visible ? 'Visible' : 'Hidden'}
                 onClick={runToggleThemeVisible}
+                className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme.visible ? styles.visibleOn : styles.visibleOff}`}
             />
             <div className="h-full w-full flex flex-row items-center justify-center px-8">
                 <span className={`min-w-0 truncate ${styles.name}`}>{theme.name}</span>
