@@ -1,7 +1,5 @@
 import { useNotifications } from './NotificationsContext'
 
-// The terminal destination every error converges to: fixed bottom-right,
-// above everything (z over the sticky utility bar). Click a toast to dismiss.
 const styles = {
     toast: 'rounded-md border border-danger/50 bg-crypt text-sm text-parchment cursor-pointer',
 }

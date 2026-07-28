@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react'
 import { NotificationsContext } from './NotificationsContext'
 
-// App-wide sink for transient messages (currently: mutation failures). Any code
-// can call notify(message); the list renders them and auto-dismisses each.
 export const NotificationsProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([])
 
