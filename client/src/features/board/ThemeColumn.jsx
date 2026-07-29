@@ -16,6 +16,7 @@ const styles = {
     input:     'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
     editBtn:   'text-parchment-dim transition-colors hover:text-accent-bright',
     deleteBtn: 'text-parchment-dim transition-colors hover:text-danger',
+    picker:    'rounded-sm',
 }
 
 export const ThemeColumn = ({ theme, items }) => {
@@ -74,7 +75,7 @@ export const ThemeColumn = ({ theme, items }) => {
                         <ColorPicker
                             color={theme.color}
                             onChange={runSetThemeColor}
-                            className="h-4 w-4 rounded-sm"
+                            className={`h-4 w-4 ${styles.picker}`}
                         />
                         <IconButton icon={faPen} title="Rename" onClick={() => setRenaming(true)} className={styles.editBtn} />
                         <IconButton icon={faTrash} title="Delete" onClick={runDeleteTheme} className={styles.deleteBtn} />

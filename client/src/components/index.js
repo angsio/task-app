@@ -1,5 +1,6 @@
 export { Navbar } from './Navbar'
 export { List } from './List'
 export { EditableText } from './EditableText'
+export { DateTimeField } from './DateTimeField'
 export { ColorPicker } from './ColorPicker'
 export { IconButton } from './IconButton'

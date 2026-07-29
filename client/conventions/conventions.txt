@@ -47,9 +47,14 @@ and app_info.md (what the app is for the user).
    nothing more — no fetching, no domain logic of their own (BoardPage is one
    line). A lower layer never imports a higher one.
 
-   "Everything shared among features" IS the bottom trifecta. A piece shared by
-   only one feature's internals stays private inside that feature's folder; it
-   is not promoted to the trifecta until a second feature needs it.
+   "Everything shared among features" IS the bottom trifecta. The test for
+   belonging there is the copy-into-another-project one above — GENERIC-ness, not
+   headcount. A piece that knows nothing of themes or items goes in the trifecta
+   as soon as it exists, even if exactly one feature uses it today; that is where
+   a reader looks for reusables, so a generic component hiding inside a feature
+   folder is just a reusable nobody can find. What stays private to a feature is
+   what KNOWS THE DOMAIN (a card that reads item.itemType, a column that renders a
+   theme) — those never move up, however many callers they get.
 
 
 3. api/ vs hooks/ — TWO UNRELATED AXES
@@ -187,8 +192,14 @@ and app_info.md (what the app is for the user).
    and a lookup, so understanding one card meant reading three places. Three
    self-contained cards each read top-to-bottom as one whole thing; the cost is
    the near-identical base is written three times, and a base change touches all
-   three — accepted on purpose. (Same call as writing toDateTimeLocal into each
-   card that needs it rather than sharing a util.)
+   three — accepted on purpose.
+
+   The line that trade stops at: a CARD SHELL is duplicated, a LEAF INPUT is not.
+   The shell has no invariant to get wrong, so three copies cost nothing but
+   keystrokes. An input with subtle correctness is the opposite — three copies are
+   three places to get it wrong — so it becomes one generic primitive in
+   components/ (§11). The datetime box every card needs is components/DateTimeField;
+   the cards import it from the trifecta like any other component.
 
    Creation lives with CreateItem: it owns its own type list (the <select>
    options) and per-type creation defaults (Event seeds timeStart/timeEnd,
@@ -230,7 +241,25 @@ and app_info.md (what the app is for the user).
     calc((100% - 2rem) / 3); plain 100/N% ignores the gaps and clips the last.
 
 
-11. ONE TEXT PRIMITIVE: EditableText (rename AND live-create)
+11. ONE INPUT PRIMITIVE PER KIND OF VALUE
+    There are exactly two, and the split is by the KIND OF VALUE being edited, not
+    by which screen edits it: EditableText for text, DateTimeField for a datetime.
+    Both live in components/ and both COMMIT THE SAME WAY — on Enter or blur, from
+    an uncontrolled input, so a rejected write leaves the user's typing on screen.
+    Learn the contract once and it holds for both.
+
+    DateTimeField wraps a native <input type="datetime-local"> and exists to hold
+    two non-obvious rules that were being got wrong per-copy:
+      - it is NEVER `disabled` while its write is in flight. Disabling a focused
+        input BLURS it, which throws the user out of the field after they type a
+        single segment.
+      - it NEVER writes on change. A datetime-local fires change as soon as its
+        value parses, i.e. mid-typing, so one edit became a burst of PATCHes.
+    Its focused-segment highlight cannot be reached by any utility (the segments
+    are browser pseudo-elements), so that one rule lives in index.css keyed off a
+    plain `.datetime-field` class — the documented exception to PAINT-in-`styles`.
+
+    The rest of this section is EditableText (rename AND live-create):
     EditableText is the single controlled-text primitive; there is no separate
     TextInput anymore. Inactive it renders <span>{value}</span>; active it
     renders a BARE <input> — no <form>, no submit button — so the caller styles
@@ -252,9 +281,11 @@ and app_info.md (what the app is for the user).
         mount is the flashing cursor.
 
     A create is therefore a draft element wearing an active EditableText, not a
-    distinct always-present field — which is exactly why the old two primitives
-    collapsed into one. Don't reintroduce a second input component; if a caller
-    needs a different box, that is what inputClassName is for.
+    distinct always-present field — which is exactly why the old two TEXT
+    primitives collapsed into one. Don't add a third text input; if a caller needs
+    a different box, that is what inputClassName is for. A new primitive is earned
+    only by a new KIND of value (a duration, a colour beyond ColorPicker), never by
+    a new caller wanting a different-looking box.
 
 
 12. NAMING THAT FLOWS FROM THE ABOVE
@@ -301,22 +332,42 @@ and app_info.md (what the app is for the user).
     grow gets a min-h-* floor with flex-1, never a fixed h-* that caps it.
 
 
-15. COLOUR HAS NAMED ROLES TOO (and styling is deliberately minimal for now)
-    The app is intentionally unstyled beyond div colours: colours exist ONLY to
-    make component placement and nesting legible before any aesthetic pass. No
-    borders, shadows, rounding, typography — just background colours by role and
-    the placement classes of sections 13-14. Same discipline as spacing: reuse a
-    colour for a role, don't pick a new one per component.
-      structural nesting (light -> dark as you go deeper): board bg-slate-100,
-        a theme column bg-slate-300, an item card bg-slate-50, the create-theme
-        column bg-slate-200. The chrome (navbar/footer) keeps its own hue.
-      action buttons by verb: create = green, delete = red, edit/rename =
-        slate-500, a toggle = slate-500 (on) / slate-200 (off).
-      an active EditableText input, and any always-present field (the native
-        <select> type-chooser, an Event/Reminder datetime input) = bg-white, so
-        each reads as an editable box against its coloured container.
-    A live-create draft reuses its real element's colour (a draft column slate-300,
-    a draft card slate-50) so the half-made element looks like the thing it is
-    becoming.
-    When real styling begins, it replaces this palette wholesale; until then,
-    adding anything decorative is noise that hides placement.
+15. COLOUR HAS NAMED ROLES TOO
+    The aesthetic pass has happened: the old placeholder slate palette is gone,
+    replaced by the named tokens in index.css @theme (shared with the hub, so the
+    two sites read as one domain). Same discipline as spacing — reuse a token for
+    a ROLE, never pick a new one per component. Tokens, by role:
+
+      surfaces, darkest -> lifted as you come forward:
+        void      the page ground, and any input WELL sunk into a surface
+                  (a datetime field, the agent's prompt box).
+        obsidian  chrome and side panels — navbar, agent panel, ThemeRows,
+                  a board theme column.
+        crypt     the things you act on: item cards, a theme's header row,
+                  the ColorPicker popover, a confirm box.
+        border    every hairline. Halve it (border-border/40, /70) where a rule
+                  should recede rather than divide.
+      text, brightest -> faintest:
+        parchment      primary content (a title, a value).
+        parchment-dim  labels and secondary lines; also a resting icon button.
+        ash            tertiary and OFF states — an idle toggle, a hint, a
+                       struck-through completed title.
+      accents — azure leads, violet and teal support:
+        accent         the primary "this one is live" mark: the active nav star,
+                       a focused field's border, a completed task.
+        accent-bright  the hover partner for any accent or dim element.
+        accent-violet  Reminder's identity, and a theme's visible toggle.
+        accent-teal    Event's identity, and a task's deadline toggle.
+        danger         destructive only — delete, and read-load error text.
+
+    ON/OFF pairs state BOTH halves and differ by more than colour where the
+    distinction matters: a completed task swaps its GLYPH (faCheck -> faSquareCheck)
+    and strikes its title, not just recolours, because a colour-only change is
+    invisible at a glance across a full board.
+
+    A live-create draft reuses its real element's surface (a draft card crypt) so
+    the half-made element looks like the thing it is becoming.
+
+    Known unused: --color-elevated is defined in @theme but referenced nowhere.
+    Either give it a role above or delete it; don't leave it as a fourth surface
+    that nothing explains.

@@ -5,7 +5,7 @@ export const FixedNavbarLayout = () => {
     return (
         <div className="h-screen w-screen flex flex-col">
             <Navbar />
-            <main className="h-19/20 w-full">
+            <main className="w-full flex-1 min-h-0">
                 <Outlet />
             </main>
         </div>

@@ -5,6 +5,7 @@ import { faPaperPlane } from '@fortawesome/free-solid-svg-icons'
 import { sendMessages, resolveActions } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { List } from '../../../components'
+import { useScheduleContext } from '../ScheduleContext'
 
 const describeToolCall = (call) => {
     const args = Object.entries(JSON.parse(call.function.arguments || '{}'))
@@ -58,8 +59,16 @@ export const Agent = () => {
     const { mutate: sendMutation, loading: sending } = useMutation(sendMessages)
     const { mutate: resolveMutation, loading: resolving } = useMutation(resolveActions)
 
+    const { upsertItem } = useScheduleContext()
+
     const busy = sending || resolving
     const bubbles = toBubbles(messages)
+
+    const applyTurn = (result) => {
+        setMessages(result.messages)
+        setPending(result.pending)
+        result.documents.forEach(upsertItem)
+    }
 
     const send = async (event) => {
         event.preventDefault()
@@ -73,21 +82,25 @@ export const Agent = () => {
         const result = await sendMutation(next)
         if (!result) return
 
-        setMessages(result.messages)
-        setPending(result.pending)
+        applyTurn(result)
     }
 
     const resolve = async (approved) => {
         const result = await resolveMutation(messages, approved)
         if (!result) return
 
-        setMessages(result.messages)
-        setPending(result.pending)
+        applyTurn(result)
+    }
+
+    const sendOnEnter = (event) => {
+        if (event.key !== 'Enter' || event.shiftKey) return
+
+        send(event)
     }
 
     return (
         <div className={`h-3/5 w-full flex flex-col ${styles.panel}`}>
-            <div className="h-full w-full overflow-y-auto overscroll-none py-2">
+            <div className="w-full flex-1 min-h-0 overflow-y-auto overscroll-none py-2">
                 {bubbles.length === 0 && !busy && (
                     <p className={`px-3 ${styles.hint}`}>Ask the agent something.</p>
                 )}
@@ -136,14 +149,15 @@ export const Agent = () => {
 
                 {busy && <p className={`px-3 py-1 ${styles.hint}`}>Thinking...</p>}
             </div>
-            <form onSubmit={send} className={`w-full flex ${styles.form}`}>
-                <input
-                    type="text"
+            <form onSubmit={send} className={`w-full flex shrink-0 ${styles.form}`}>
+                <textarea
+                    rows={1}
                     value={input}
                     onChange={event => setInput(event.target.value)}
+                    onKeyDown={sendOnEnter}
                     disabled={busy}
                     placeholder="Send a prompt..."
-                    className={`w-full p-2 ${styles.input}`}
+                    className={`w-full max-h-24 field-sizing-content resize-none p-2 overflow-y-auto ${styles.input}`}
                 />
                 <button
                     type="submit"

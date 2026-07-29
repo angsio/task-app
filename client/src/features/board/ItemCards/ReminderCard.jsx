@@ -2,20 +2,16 @@ import { useState } from 'react'
 import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons'
-import { EditableText, IconButton } from '../../../components'
+import { EditableText, IconButton, DateTimeField } from '../../../components'
 import { useBoardContext } from '../BoardContext'
-import { toDateTimeLocal } from './timeUtils'
 
 const styles = {
-    card:       'bg-crypt border border-border rounded-md',
-    label:      'font-display text-accent-violet',
-    title:      'text-parchment',
-    input:      'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
-    editBtn:    'text-parchment-dim transition-colors hover:text-accent-bright',
-    deleteBtn:  'text-parchment-dim transition-colors hover:text-danger',
-    meta:       'text-parchment-dim',
-    field:      'bg-void border border-border rounded-md',
-    fieldInput: 'bg-transparent text-center text-parchment focus:outline-none',
+    card:      'bg-crypt border border-border rounded-md',
+    label:     'font-display text-accent-violet',
+    title:     'text-parchment',
+    input:     'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
+    editBtn:   'text-parchment-dim transition-colors hover:text-accent-bright',
+    deleteBtn: 'text-parchment-dim transition-colors hover:text-danger',
 }
 
 export const ReminderCard = ({ item }) => {
@@ -77,16 +73,12 @@ export const ReminderCard = ({ item }) => {
                 </div>
             </div>
             <div className="h-4/5 w-full flex items-center pt-4">
-                <div className={`h-1/2 w-full flex flex-row items-center px-4 ${styles.field}`}>
-                    <span className={`w-1/4 ${styles.meta}`}>Time:</span>
-                    <input
-                        type="datetime-local"
-                        className={`h-full w-3/4 ${styles.fieldInput}`}
-                        defaultValue={toDateTimeLocal(item.reminderTime)}
-                        onChange={(event) => runUpdateReminderTime(event.target.value)}
-                        disabled={updatingItem}
-                    />
-                </div>
+                <DateTimeField
+                    label="Time:"
+                    value={item.reminderTime}
+                    onCommit={runUpdateReminderTime}
+                    className="h-1/2"
+                />
             </div>
         </div>
     )

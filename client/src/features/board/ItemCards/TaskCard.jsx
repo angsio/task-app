@@ -1,21 +1,18 @@
 import { useState } from 'react'
 import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { faPen, faTrash, faClock, faCheck } from '@fortawesome/free-solid-svg-icons'
-import { EditableText, IconButton } from '../../../components'
+import { faPen, faTrash, faClock, faSquare, faSquareCheck } from '@fortawesome/free-solid-svg-icons'
+import { EditableText, IconButton, DateTimeField } from '../../../components'
 import { useBoardContext } from '../BoardContext'
-import { toDateTimeLocal } from './timeUtils'
 
 const styles = {
     card:        'bg-crypt border border-border rounded-md',
     label:       'font-display text-accent',
     title:       'text-parchment',
+    titleDone:   'text-ash line-through',
     input:       'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
     editBtn:     'text-parchment-dim transition-colors hover:text-accent-bright',
     deleteBtn:   'text-parchment-dim transition-colors hover:text-danger',
-    meta:        'text-parchment-dim',
-    timeRow:     'bg-void border border-border rounded-md',
-    timeInput:   'bg-transparent text-center text-parchment focus:outline-none',
     deadlineOn:  'text-accent-teal transition-colors',
     deadlineOff: 'text-ash transition-colors hover:text-parchment-dim',
     doneOn:      'text-accent transition-colors',
@@ -85,7 +82,7 @@ export const TaskCard = ({ item }) => {
                         onCancel={cancelRenameTask}
                         disabled={updatingItem || deletingItem}
                         maxLength={60}
-                        className={`flex-1 min-w-0 ${styles.title}`}
+                        className={`flex-1 min-w-0 ${item.completed ? styles.titleDone : styles.title}`}
                         inputClassName={styles.input}
                     />
                 </div>
@@ -97,16 +94,12 @@ export const TaskCard = ({ item }) => {
             <div className="h-4/5 w-full flex flex-col pt-4">
                 <div className="h-1/2 w-full">
                     {item.hasDeadline && (
-                        <div className={`h-full w-full flex flex-row items-center px-4 ${styles.timeRow}`}>
-                            <span className={`w-1/4 ${styles.meta}`}>Time:</span>
-                            <input
-                                type="datetime-local"
-                                className={`h-full w-3/4 ${styles.timeInput}`}
-                                defaultValue={toDateTimeLocal(item.deadline)}
-                                onChange={event => runUpdateTaskDeadline(event.target.value)}
-                                disabled={updatingItem}
-                            />
-                        </div>
+                        <DateTimeField
+                            label="Time:"
+                            value={item.deadline}
+                            onCommit={runUpdateTaskDeadline}
+                            className="h-full"
+                        />
                     )}
                 </div>
                 <div className="h-1/2 w-full flex items-end gap-4">
@@ -118,8 +111,8 @@ export const TaskCard = ({ item }) => {
                         className={item.hasDeadline ? styles.deadlineOn : styles.deadlineOff}
                     />
                     <IconButton
-                        icon={faCheck}
-                        title="Completed"
+                        icon={item.completed ? faSquareCheck : faSquare}
+                        title={item.completed ? 'Completed' : 'Mark complete'}
                         onClick={runToggleTaskCompleted}
                         disabled={updatingItem}
                         className={item.completed ? styles.doneOn : styles.doneOff}

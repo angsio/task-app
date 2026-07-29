@@ -38,16 +38,16 @@ export const createItems = {
 
         for (const item of items) {
             const Model = MODELS[item.itemType]
-            if (!Model) return { error: `Unknown item type: "${item.itemType}".` }
+            if (!Model) return { result: { error: `Unknown item type: "${item.itemType}".` } }
 
             const themeId = await findThemeId(item.theme)
-            if (!themeId) return { error: `No theme named "${item.theme}" exists.` }
+            if (!themeId) return { result: { error: `No theme named "${item.theme}" exists.` } }
 
             const doc = new Model({ ...item, theme: themeId })
             try {
                 await doc.validate()
             } catch (invalid) {
-                return { error: `Could not create "${item.title}": ${invalid.message}` }
+                return { result: { error: `Could not create "${item.title}": ${invalid.message}` } }
             }
 
             pending.push({ doc, theme: item.theme })
@@ -56,7 +56,10 @@ export const createItems = {
         await Promise.all(pending.map(({ doc }) => doc.save()))
 
         return {
-            created: pending.map(({ doc, theme }) => ({ id: doc._id, title: doc.title, type: doc.itemType, theme }))
+            result: {
+                created: pending.map(({ doc, theme }) => ({ id: doc._id, title: doc.title, type: doc.itemType, theme }))
+            },
+            documents: pending.map(({ doc }) => doc)
         }
     }
 }

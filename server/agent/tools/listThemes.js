@@ -10,6 +10,6 @@ export const listThemes = {
     handler: async () => {
         const themes = await Theme.find({}).lean()
 
-        return themes.map(theme => ({ id: theme._id, name: theme.name }))
+        return { result: themes.map(theme => ({ id: theme._id, name: theme.name })) }
     }
 }

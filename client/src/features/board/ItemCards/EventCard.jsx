@@ -2,20 +2,16 @@ import { useState } from 'react'
 import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons'
-import { EditableText, IconButton } from '../../../components'
+import { EditableText, IconButton, DateTimeField } from '../../../components'
 import { useBoardContext } from '../BoardContext'
-import { toDateTimeLocal } from './timeUtils'
 
 const styles = {
-    card:       'bg-crypt border border-border rounded-md',
-    label:      'font-display text-accent-teal',
-    title:      'text-parchment',
-    input:      'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
-    editBtn:    'text-parchment-dim transition-colors hover:text-accent-bright',
-    deleteBtn:  'text-parchment-dim transition-colors hover:text-danger',
-    meta:       'text-parchment-dim',
-    field:      'bg-void border border-border rounded-md',
-    fieldInput: 'bg-transparent text-center text-parchment focus:outline-none',
+    card:      'bg-crypt border border-border rounded-md',
+    label:     'font-display text-accent-teal',
+    title:     'text-parchment',
+    input:     'bg-void border border-border rounded-md px-2 text-parchment focus:border-accent focus:outline-none',
+    editBtn:   'text-parchment-dim transition-colors hover:text-accent-bright',
+    deleteBtn: 'text-parchment-dim transition-colors hover:text-danger',
 }
 
 export const EventCard = ({ item }) => {
@@ -76,27 +72,19 @@ export const EventCard = ({ item }) => {
                     <IconButton icon={faTrash} title="Delete" onClick={runDeleteEvent} className={styles.deleteBtn} />
                 </div>
             </div>
-            <div className="h-4/5 w-full flex flex-col justify-between pt-4 gap-1">
-                <div className={`h-1/2 w-full flex flex-row items-center px-4 ${styles.field}`}>
-                    <span className={`w-1/4 ${styles.meta}`}>Start:</span>
-                    <input
-                        type="datetime-local"
-                        className={`h-full w-3/4 ${styles.fieldInput}`}
-                        defaultValue={toDateTimeLocal(item.timeStart)}
-                        onChange={event => runUpdateField('timeStart', event.target.value)}
-                        disabled={updatingItem}
-                    />
-                </div>
-                <div className={`h-1/2 w-full flex flex-row items-center px-4 ${styles.field}`}>
-                    <span className={`w-1/4 ${styles.meta}`}>End:</span>
-                    <input
-                        type="datetime-local"
-                        className={`h-full w-3/4 ${styles.fieldInput}`}
-                        defaultValue={toDateTimeLocal(item.timeEnd)}
-                        onChange={event => runUpdateField('timeEnd', event.target.value)}
-                        disabled={updatingItem}
-                    />
-                </div>
+            <div className="h-4/5 w-full flex flex-col pt-4 gap-1">
+                <DateTimeField
+                    label="Start:"
+                    value={item.timeStart}
+                    onCommit={value => runUpdateField('timeStart', value)}
+                    className="flex-1 min-h-0"
+                />
+                <DateTimeField
+                    label="End:"
+                    value={item.timeEnd}
+                    onCommit={value => runUpdateField('timeEnd', value)}
+                    className="flex-1 min-h-0"
+                />
             </div>
         </div>
     )

@@ -42,7 +42,7 @@ export const TaskCard = ({ item: task, color }) => {
                     className={styles.completeBtn}
                     onClick={runToggleTaskCompleted}
                 >
-                    Mark Complete
+                    {task.completed ? 'Mark Incomplete' : 'Mark Complete'}
                 </button>
             </div>
         </div>

@@ -31,6 +31,7 @@ body {
 
 :root {
   color-scheme: dark;
+  --nav-h: 4rem;
 }
 
 body {
@@ -60,4 +61,32 @@ body {
 
 ::placeholder {
   color: var(--color-ash);
+}
+
+.datetime-field::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.datetime-field::-webkit-datetime-edit-year-field:focus,
+.datetime-field::-webkit-datetime-edit-month-field:focus,
+.datetime-field::-webkit-datetime-edit-day-field:focus,
+.datetime-field::-webkit-datetime-edit-hour-field:focus,
+.datetime-field::-webkit-datetime-edit-minute-field:focus,
+.datetime-field::-webkit-datetime-edit-ampm-field:focus {
+  background-color: var(--color-accent);
+  border-radius: 0.25rem;
+  color: var(--color-void);
+  outline: none;
+  padding: 0 0.15rem;
+}
+
+.datetime-field::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.2s;
+  filter: invert(1);
+}
+
+.datetime-field::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }

@@ -36,12 +36,12 @@ export const listItems = {
 
         if (theme) {
             const themeId = await findThemeId(theme)
-            if (!themeId) return { error: `No theme named "${theme}" exists.` }
+            if (!themeId) return { result: { error: `No theme named "${theme}" exists.` } }
             filter.theme = themeId
         }
 
         const items = await Item.find(filter).populate('theme', 'name').lean()
 
-        return items.map(shapeItem)
+        return { result: items.map(shapeItem) }
     }
 }

@@ -48,14 +48,17 @@ const needsConfirm = (call) => TOOLS[call.function.name]?.confirm
 
 const runTool = async (call) => {
     const tool = TOOLS[call.function.name]
-    const result = tool
+    const { result, documents = [] } = tool
         ? await tool.handler(JSON.parse(call.function.arguments))
-        : { error: `Unknown tool: ${call.function.name}` }
+        : { result: { error: `Unknown tool: ${call.function.name}` } }
 
     return {
-        role: 'tool',
-        tool_call_id: call.id,
-        content: JSON.stringify(result)
+        message: {
+            role: 'tool',
+            tool_call_id: call.id,
+            content: JSON.stringify(result)
+        },
+        documents
     }
 }
 
@@ -66,21 +69,25 @@ const describeCall = (call) => ({
 })
 
 const advance = async (messages, tools) => {
+    const documents = []
+
     for (let step = 0; step < MAX_STEPS; step++) {
         const answer = await chat(messages, tools)
         messages.push(answer)
 
-        if (!answer.tool_calls?.length) return { messages, pending: [] }
+        if (!answer.tool_calls?.length) return { messages, pending: [], documents }
 
         for (const call of answer.tool_calls.filter(call => !needsConfirm(call))) {
-            messages.push(await runTool(call))
+            const written = await runTool(call)
+            messages.push(written.message)
+            documents.push(...written.documents)
         }
 
         const pending = answer.tool_calls.filter(needsConfirm)
-        if (pending.length) return { messages, pending: pending.map(describeCall) }
+        if (pending.length) return { messages, pending: pending.map(describeCall), documents }
     }
 
-    return { messages, pending: [] }
+    return { messages, pending: [], documents }
 }
 
 export const runAgent = async (incoming) => {
@@ -98,13 +105,21 @@ export const resolveActions = async (incoming, approved) => {
         needsConfirm(call) && !messages.some(message => message.tool_call_id === call.id)
     )
 
+    const documents = []
+
     for (const call of pending) {
-        messages.push(approved
-            ? await runTool(call)
-            : { role: 'tool', tool_call_id: call.id, content: JSON.stringify({ cancelled: true, message: 'The user declined this action. Nothing was created or changed. Tell the user it was cancelled and do not claim it was done.' }) }
-        )
+        if (!approved) {
+            messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify({ cancelled: true, message: 'The user declined this action. Nothing was created or changed. Tell the user it was cancelled and do not claim it was done.' }) })
+            continue
+        }
+
+        const written = await runTool(call)
+        messages.push(written.message)
+        documents.push(...written.documents)
     }
 
     const tools = await selectTools(lastUserPrompt(messages))
-    return advance(messages, tools)
+    const advanced = await advance(messages, tools)
+
+    return { ...advanced, documents: [...documents, ...advanced.documents] }
 }
