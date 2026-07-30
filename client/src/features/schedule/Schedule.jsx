@@ -6,7 +6,7 @@ import { Agent } from './Agent'
 import { ThemeRows } from './ThemeRows'
 
 const styles = {
-    aside:  'border-l border-border',
+    aside:  'border-t border-border lg:border-t-0 lg:border-l',
     notice: 'text-parchment-dim',
     error:  'text-danger',
 }
@@ -24,9 +24,9 @@ export const Schedule = () => {
             upsertItem: items.upsert,
             upsertTheme: themes.upsert
         }}>
-            <div className="h-full w-full flex flex-row">
+            <div className="h-full w-full flex flex-col lg:flex-row">
                 <Timetable themes={themes.data} items={items.data} />
-                <div className={`h-full w-1/4 flex flex-col ${styles.aside}`}>
+                <div className={`h-2/5 w-full flex flex-col lg:h-full lg:w-1/4 ${styles.aside}`}>
                     <Agent />
                     <ThemeRows themes={themes.data} />
                 </div>

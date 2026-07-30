@@ -59,8 +59,8 @@ export const ThemeColumn = ({ theme, items }) => {
 
     return (
         <div className={`h-full w-full flex flex-col p-2 ${styles.column}`}>
-            <div className="h-1/10 w-full p-2">
-                <div className={`h-full w-full flex flex-row items-center justify-between p-4 gap-4 ${styles.header}`}>
+            <div className="w-full shrink-0 p-2">
+                <div className={`w-full flex items-center justify-between p-4 gap-4 ${styles.header}`}>
                     <EditableText
                         value={theme.name}
                         active={renaming}
@@ -71,7 +71,7 @@ export const ThemeColumn = ({ theme, items }) => {
                         className={`flex-1 min-w-0 ${styles.name}`}
                         inputClassName={styles.input}
                     />
-                    <div className="flex flex-row items-center gap-4">
+                    <div className="flex items-center gap-4">
                         <ColorPicker
                             color={theme.color}
                             onChange={runSetThemeColor}
@@ -87,15 +87,15 @@ export const ThemeColumn = ({ theme, items }) => {
                 keyExtractor={item => item._id}
                 flow="x"
                 slots={1}
-                autoSize="25%"
-                className="h-8/10 w-full overflow-y-auto overscroll-none"
+                autoSize={{ base: '50%', md: '33.333%', lg: '25%' }}
+                className="w-full flex-1 min-h-0 overflow-y-auto"
             >
                 {item => {
                     const Card = ITEM_CARDS[item.itemType]
                     return Card ? <Card item={item} /> : null
                 }}
             </List>
-            <div className="h-1/10 w-full flex items-center p-2">
+            <div className="w-full shrink-0 p-2">
                 <CreateItem themeId={theme._id} />
             </div>
         </div>

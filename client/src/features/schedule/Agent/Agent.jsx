@@ -100,7 +100,7 @@ export const Agent = () => {
 
     return (
         <div className={`h-3/5 w-full flex flex-col ${styles.panel}`}>
-            <div className="w-full flex-1 min-h-0 overflow-y-auto overscroll-none py-2">
+            <div className="w-full flex-1 min-h-0 overflow-y-auto py-2">
                 {bubbles.length === 0 && !busy && (
                     <p className={`px-3 ${styles.hint}`}>Ask the agent something.</p>
                 )}

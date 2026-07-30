@@ -29,13 +29,13 @@ export const DayColumn = ({ placed }) => {
             >
                 {hour => (
                     <div className={`h-full w-full flex ${styles.hourRow}`}>
-                        <div className={`h-full w-1/12 flex justify-center ${styles.hourLabel}`}>
+                        <div className={`h-full w-8 flex justify-center shrink-0 ${styles.hourLabel}`}>
                             {hour}
                         </div>
                     </div>
                 )}
             </List>
-            <div className="absolute top-0 right-0 h-full w-11/12">
+            <div className="absolute top-0 right-0 left-8 h-full">
                 {placed.map(({ item, style, color }) => {
                     const Card = ITEM_CARDS[item.itemType]
 

@@ -13,8 +13,8 @@ export const ThemeRows = ({ themes }) => {
                 keyExtractor={theme => theme._id}
                 flow="x"
                 slots={1}
-                autoSize="20%"
-                className="h-full w-full overflow-y-auto overscroll-none scrollbar-none"
+                autoSize={{ base: '33.333%', md: '25%', lg: '20%' }}
+                className="h-full w-full overflow-y-auto scrollbar-none"
                 itemClassName=""
             >
                 {theme => <ThemeCard theme={theme} />}

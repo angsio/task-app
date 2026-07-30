@@ -8,7 +8,7 @@ const ITEM_TYPES = ['Task', 'Event', 'Reminder']
 
 const styles = {
     draft:  'bg-crypt border border-border rounded-md',
-    input:  'h-full bg-transparent text-center text-parchment focus:outline-none',
+    input:  'bg-transparent text-center text-parchment focus:outline-none',
     select: 'bg-void border border-border rounded-md text-center text-parchment-dim transition-colors hover:border-accent focus:border-accent focus:outline-none',
 }
 
@@ -55,7 +55,7 @@ export const CreateItem = ({ themeId }) => {
 
     if (type) {
         return (
-            <div className={`h-full w-full p-4 ${styles.draft}`}>
+            <div className={`w-full p-4 ${styles.draft}`}>
                 <EditableText
                     value=""
                     active
@@ -64,7 +64,7 @@ export const CreateItem = ({ themeId }) => {
                     disabled={loading}
                     placeholder={`New ${type}`}
                     maxLength={60}
-                    className="h-full w-full"
+                    className="w-full"
                     inputClassName={styles.input}
                 />
             </div>
@@ -73,7 +73,7 @@ export const CreateItem = ({ themeId }) => {
 
     return (
         <select
-            className={`h-full w-full ${styles.select}`}
+            className={`w-full p-4 ${styles.select}`}
             value=""
             onChange={(event) => setType(event.target.value)}
         >

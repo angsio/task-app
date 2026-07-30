@@ -24,14 +24,14 @@ export const DateTimeField = ({ label, value, onCommit, className = '' }) => {
     }
 
     return (
-        <div className={`w-full flex flex-row items-center px-4 ${styles.field} ${className}`}>
-            <span className={`w-1/4 ${styles.label}`}>{label}</span>
+        <div className={`w-full flex items-center px-4 gap-2 ${styles.field} ${className}`}>
+            <span className={`shrink-0 ${styles.label}`}>{label}</span>
             <input
                 type="datetime-local"
                 defaultValue={toDateTimeLocal(value)}
                 onBlur={commit}
                 onKeyDown={commitOnEnter}
-                className={`h-full w-3/4 ${styles.input}`}
+                className={`h-full flex-1 min-w-0 ${styles.input}`}
             />
         </div>
     )

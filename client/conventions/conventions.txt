@@ -225,9 +225,23 @@ and app_info.md (what the app is for the user).
     TEXT at build time and emits CSS only for complete class literals it finds.
     `flow` has two known outcomes, so it stays a class via a literal map
     ({ x:'grid-flow-row', y:'grid-flow-col' }). `slots` and `autoSize` are open
-    values assembled at runtime — Tailwind would never see `grid-cols-${n}`, so
-    they go through inline `style` (gridTemplateColumns/Rows, gridAutoRows/
-    Columns). Rule: a fixed, known set of values -> class; an open value -> style.
+    values assembled at runtime — Tailwind would never see `grid-cols-${n}`.
+
+    Both are also RESPONSIVE, and an inline `style` cannot hold a media query, so
+    they are not plain style values either. They pass through `style` as CSS custom
+    properties (--list-slots{,-md,-lg}, --list-size{,-md,-lg}) which the
+    list-tracks-x / list-tracks-y utilities in index.css read inside real media
+    queries. Either prop takes a bare value for all sizes or a per-breakpoint
+    object:
+
+        slots={4}                        autoSize="100%"
+        slots={{ base: 1, md: 2, lg: 4 }}
+
+    List always writes EVERY tier, carrying the last named breakpoint forward,
+    because custom properties INHERIT — a nested List that left a tier unset would
+    inherit the enclosing List's value and adopt its layout. See tailwind-ruleset
+    §7a; that bug shipped once. The full reasoning and the breakpoint ladder live
+    there, not here.
 
     Track-size lesson: a grid's improvised tracks default to `auto` and, in a
     definite-height container, are STRETCHED equally to fill it — which is why N
@@ -239,6 +253,12 @@ and app_info.md (what the app is for the user).
     To show exactly N tracks before the rest scrolls, size each gap-aware:
     autoSize = calc((100% - (N-1)*gap) / N) — e.g. 3 cards at gap-4 is
     calc((100% - 2rem) / 3); plain 100/N% ignores the gaps and clips the last.
+
+    A List whose tracks are full-bleed panes (autoSize '100%') should snap, or the
+    user can park halfway between two of them: pass itemClassName="snap-start" and
+    put snap-y/snap-x + snap-mandatory on the List's own className. Nested Lists
+    must NOT carry overscroll-none or they swallow the drag instead of handing it
+    to the List outside them — tailwind-ruleset §11.
 
 
 11. ONE INPUT PRIMITIVE PER KIND OF VALUE

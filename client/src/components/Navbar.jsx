@@ -17,7 +17,7 @@ const linkLayout = 'inline-flex items-center gap-2 py-2'
 
 export const Navbar = () => {
     return (
-        <div className={`h-(--nav-h) w-full flex items-center shrink-0 px-10 gap-8 ${styles.bar}`}>
+        <div className={`h-(--nav-h) w-full flex items-center shrink-0 px-4 gap-4 md:px-10 md:gap-8 ${styles.bar}`}>
             {NAV_LINKS.map(link => (
                 <NavLink
                     key={link.to}

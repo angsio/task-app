@@ -72,7 +72,7 @@ export const TaskCard = ({ item }) => {
 
     return (
         <div className={`h-full w-full flex flex-col p-4 ${styles.card}`}>
-            <div className="h-1/5 w-full flex flex-row items-center justify-between">
+            <div className="h-1/5 w-full flex items-center justify-between">
                 <div className="flex-1 min-w-0 flex items-center gap-1">
                     <span className={styles.label}>Task:</span>
                     <EditableText
@@ -86,7 +86,7 @@ export const TaskCard = ({ item }) => {
                         inputClassName={styles.input}
                     />
                 </div>
-                <div className="flex flex-row gap-4">
+                <div className="flex gap-4">
                     <IconButton icon={faPen} title="Rename" onClick={() => setRenaming(true)} className={styles.editBtn} />
                     <IconButton icon={faTrash} title="Delete" onClick={runDeleteTask} className={styles.deleteBtn} />
                 </div>

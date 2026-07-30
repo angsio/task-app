@@ -33,7 +33,7 @@ export const ThemeCard = ({ theme }) => {
     }
 
     return (
-        <div className={`relative h-full w-full flex flex-row items-center ${styles.card}`}>
+        <div className={`relative h-full w-full flex items-center ${styles.card}`}>
             <ColorPicker
                 color={theme.color}
                 onChange={runSetThemeColor}
@@ -45,7 +45,7 @@ export const ThemeCard = ({ theme }) => {
                 onClick={runToggleThemeVisible}
                 className={`absolute left-4 top-1/2 -translate-y-1/2 ${theme.visible ? styles.visibleOn : styles.visibleOff}`}
             />
-            <div className="h-full w-full flex flex-row items-center justify-center px-8">
+            <div className="h-full w-full flex items-center justify-center px-8">
                 <span className={`min-w-0 truncate ${styles.name}`}>{theme.name}</span>
             </div>
         </div>

@@ -9,7 +9,7 @@ const styles = {
 
 export const EventCard = ({ item: event, color }) => {
     return (
-        <div className={`relative h-full w-full flex flex-row ${styles.card}`}>
+        <div className={`relative h-full w-full flex ${styles.card}`}>
             <div
                 className="absolute left-0 h-full w-2"
                 style={{ backgroundColor: color }}
@@ -18,7 +18,7 @@ export const EventCard = ({ item: event, color }) => {
                 <div className={`shrink-0 ${styles.title}`}>
                     <span className={styles.label}>Event: </span>{event.title}
                 </div>
-                <div className="flex flex-row gap-4">
+                <div className="flex gap-4">
                     <div>
                         <span className={styles.label}>Starts: </span>{toHourMinute(event.timeStart)}
                     </div>

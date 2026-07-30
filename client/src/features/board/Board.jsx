@@ -29,15 +29,16 @@ export const Board = () => {
                 items={themes.data}
                 keyExtractor={theme => theme._id}
                 flow="x"
-                slots={4}
+                slots={{ base: 1, md: 2, lg: 4 }}
                 autoSize="100%"
                 trailing=
                 {
-                    <div className="p-2">
+                    <div className="p-2 snap-start snap-always md:snap-normal">
                         <CreateTheme />
                     </div>
                 }
-                className="h-full w-full p-2 overflow-y-auto overscroll-none"
+                itemClassName="p-2 snap-start snap-always md:snap-normal"
+                className="h-full w-full p-2 snap-y snap-mandatory overflow-y-auto overscroll-none"
             >
                 {theme => (
                     <ThemeColumn

@@ -25,7 +25,7 @@ export const TaskCard = ({ item: task, color }) => {
     }
 
     return (
-        <div className={`relative h-full w-full flex flex-row ${styles.card}`}>
+        <div className={`relative h-full w-full flex ${styles.card}`}>
             <div
                 className="absolute left-0 h-full w-2"
                 style={{ backgroundColor: color }}

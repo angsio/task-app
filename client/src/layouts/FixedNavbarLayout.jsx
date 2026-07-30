@@ -3,7 +3,7 @@ import { Navbar } from '../components'
 
 export const FixedNavbarLayout = () => {
     return (
-        <div className="h-screen w-screen flex flex-col">
+        <div className="h-dvh w-full flex flex-col">
             <Navbar />
             <main className="w-full flex-1 min-h-0">
                 <Outlet />
