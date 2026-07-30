@@ -7,10 +7,6 @@ const HOURS_IN_DAY = 24
 const VISIBLE_HOURS = 6
 const HEADER_HOURS = 0.5
 
-const DAY_WIDTH = Object.fromEntries(
-    Object.entries(VISIBLE_DAYS).map(([at, days]) => [at, `calc(100% / ${days})`])
-)
-
 const COLUMN_HEIGHT = `calc(100% * ${(HOURS_IN_DAY + HEADER_HOURS) / (VISIBLE_HOURS + HEADER_HOURS)})`
 const HEADER_HEIGHT = `calc(100% * ${HEADER_HOURS / (HOURS_IN_DAY + HEADER_HOURS)})`
 
@@ -35,8 +31,7 @@ export const Timetable = ({ themes, items }) => {
                 items={weekDays()}
                 keyExtractor={dayKey}
                 flow="y"
-                slots={1}
-                autoSize={DAY_WIDTH}
+                visible={VISIBLE_DAYS}
                 itemClassName="snap-start snap-always"
                 className="h-full w-full snap-x snap-mandatory md:snap-none overflow-auto overscroll-none scrollbar-none"
             >

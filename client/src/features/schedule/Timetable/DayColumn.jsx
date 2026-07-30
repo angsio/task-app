@@ -5,8 +5,6 @@ const HOURS_IN_DAY = 24
 
 const HOURS = Array.from({ length: HOURS_IN_DAY }, (_, hour) => hour)
 
-const HOUR_HEIGHT = `calc(100% / ${HOURS_IN_DAY})`
-
 const ITEM_CARDS = { Task: TaskCard, Event: EventCard, Reminder: ReminderCard }
 
 const styles = {
@@ -21,10 +19,7 @@ export const DayColumn = ({ placed }) => {
             <List
                 items={HOURS}
                 keyExtractor={hour => hour}
-                flow="x"
-                slots={1}
-                autoSize={HOUR_HEIGHT}
-                itemClassName=""
+                visible={HOURS_IN_DAY}
                 className="h-full w-full"
             >
                 {hour => (

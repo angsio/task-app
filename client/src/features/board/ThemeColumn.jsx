@@ -85,10 +85,9 @@ export const ThemeColumn = ({ theme, items }) => {
             <List
                 items={items}
                 keyExtractor={item => item._id}
-                flow="x"
-                slots={1}
-                autoSize={{ base: '50%', md: '33.333%', lg: '25%' }}
+                visible={{ base: 2, md: 3, lg: 4 }}
                 className="w-full flex-1 min-h-0 overflow-y-auto"
+                itemClassName="p-2"
             >
                 {item => {
                     const Card = ITEM_CARDS[item.itemType]

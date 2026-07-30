@@ -25,36 +25,6 @@
     Georgia, serif;
 }
 
-@utility list-tracks-x {
-  grid-template-columns: repeat(var(--list-slots), minmax(0, 1fr));
-  grid-auto-rows: var(--list-size);
-
-  @media (width >= theme(--breakpoint-md)) {
-    grid-template-columns: repeat(var(--list-slots-md), minmax(0, 1fr));
-    grid-auto-rows: var(--list-size-md);
-  }
-
-  @media (width >= theme(--breakpoint-lg)) {
-    grid-template-columns: repeat(var(--list-slots-lg), minmax(0, 1fr));
-    grid-auto-rows: var(--list-size-lg);
-  }
-}
-
-@utility list-tracks-y {
-  grid-template-rows: repeat(var(--list-slots), minmax(0, 1fr));
-  grid-auto-columns: var(--list-size);
-
-  @media (width >= theme(--breakpoint-md)) {
-    grid-template-rows: repeat(var(--list-slots-md), minmax(0, 1fr));
-    grid-auto-columns: var(--list-size-md);
-  }
-
-  @media (width >= theme(--breakpoint-lg)) {
-    grid-template-rows: repeat(var(--list-slots-lg), minmax(0, 1fr));
-    grid-auto-columns: var(--list-size-lg);
-  }
-}
-
 html,
 body {
   height: 100%;

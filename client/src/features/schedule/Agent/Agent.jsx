@@ -107,9 +107,6 @@ export const Agent = () => {
                 <List
                     items={bubbles}
                     keyExtractor={bubble => bubble.key}
-                    flow="x"
-                    slots={1}
-                    autoSize="auto"
                     className="w-full"
                     itemClassName="px-3 py-1"
                 >
