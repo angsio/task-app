@@ -1,6 +1,6 @@
 import express from 'express'
 
-import { ApiError, handleError } from '../errors.js'
+import { ApiError } from '../errors.js'
 import { runAgent } from '../agent/runAgent.js'
 
 const router = express.Router()
@@ -9,14 +9,10 @@ const router = express.Router()
 // `approved` is present only when answering a pending confirmation, so one
 // entry point serves both cases.
 router.post('/', async (req, res) => {
-    try {
-        const { messages, approved } = req.body
-        if (!messages?.length) throw new ApiError(400, 'Messages are required.')
+    const { messages, approved } = req.body
+    if (!messages?.length) throw new ApiError(400, 'Messages are required.')
 
-        res.status(200).json(await runAgent({ messages, approved }))
-    } catch (error) {
-        handleError(res, error)
-    }
+    res.status(200).json(await runAgent({ messages, approved }))
 })
 
 export { router as agentRouter }

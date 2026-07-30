@@ -7,14 +7,17 @@ export class ApiError extends Error {
 }
 
 /*
-  In:  res    the Express response
-       error  any thrown value
+  The one place an error becomes a response. Mounted last in index.js.
 
-  Out: sends { error: string } with a status inferred from the error —
-       ApiError keeps its own code, mongoose validation and cast errors
-       become 400, everything else is logged and returned as a 500.
+  In:  error  any thrown value — Express 5 forwards a rejected promise from any
+              async handler here, so routes never try/catch
+
+  Out: sends { error: string }, with the status inferred from the error:
+       ApiError keeps its own code, mongoose ValidationError and CastError
+       become 400, and anything else is logged and returned as a 500.
 */
-export const handleError = (res, error) => {
+// eslint-disable-next-line no-unused-vars
+export const errorHandler = (error, req, res, next) => {
     if (error instanceof ApiError) {
         return res.status(error.statusCode).json({ error: error.message })
     }

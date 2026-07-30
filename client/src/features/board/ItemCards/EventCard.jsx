@@ -1,9 +1,6 @@
-import { useState } from 'react'
-import { updateItem, deleteItem } from '../../../api'
-import { useMutation } from '../../../hooks'
 import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { EditableText, IconButton, DateTimeField } from '../../../components'
-import { useBoardContext } from '../BoardContext'
+import { useItemCard } from './useItemCard'
 
 const styles = {
     card:      'bg-crypt border border-border rounded-md',
@@ -15,41 +12,7 @@ const styles = {
 }
 
 export const EventCard = ({ item }) => {
-    const [renaming, setRenaming] = useState(false)
-
-    const { mutate: updateItemMutation, loading: updatingItem } = useMutation(updateItem)
-    const { mutate: deleteItemMutation, loading: deletingItem } = useMutation(deleteItem)
-
-    const { upsertItem, removeItem } = useBoardContext()
-
-    const submitRenameEvent = async (title) => {
-        if (!title.trim()) {
-            setRenaming(false)
-            return
-        }
-
-        const updated = await updateItemMutation(item._id, { title })
-        if (!updated) return
-
-        upsertItem(updated)
-        setRenaming(false)
-    }
-
-    const cancelRenameEvent = () => setRenaming(false)
-
-    const runDeleteEvent = async () => {
-        const deleted = await deleteItemMutation(item._id)
-        if (!deleted) return
-
-        removeItem(deleted)
-    }
-
-    const runUpdateField = async (field, value) => {
-        const updated = await updateItemMutation(item._id, { [field]: value })
-        if (!updated) return
-
-        upsertItem(updated)
-    }
+    const { renaming, startRename, submitRename, cancelRename, runDelete, patch, busy } = useItemCard(item)
 
     return (
         <div className={`h-full w-full flex flex-col p-4 ${styles.card}`}>
@@ -59,30 +22,30 @@ export const EventCard = ({ item }) => {
                     <EditableText
                         value={item.title}
                         active={renaming}
-                        onSubmit={submitRenameEvent}
-                        onCancel={cancelRenameEvent}
-                        disabled={updatingItem || deletingItem}
+                        onSubmit={submitRename}
+                        onCancel={cancelRename}
+                        disabled={busy}
                         maxLength={60}
                         className={`flex-1 min-w-0 ${styles.title}`}
                         inputClassName={styles.input}
                     />
                 </div>
                 <div className="flex gap-4">
-                    <IconButton icon={faPen} title="Rename" onClick={() => setRenaming(true)} className={styles.editBtn} />
-                    <IconButton icon={faTrash} title="Delete" onClick={runDeleteEvent} className={styles.deleteBtn} />
+                    <IconButton icon={faPen} title="Rename" onClick={startRename} className={styles.editBtn} />
+                    <IconButton icon={faTrash} title="Delete" onClick={runDelete} className={styles.deleteBtn} />
                 </div>
             </div>
             <div className="h-4/5 w-full flex flex-col pt-4 gap-1">
                 <DateTimeField
                     label="Start:"
                     value={item.timeStart}
-                    onCommit={value => runUpdateField('timeStart', value)}
+                    onCommit={value => patch({ timeStart: value })}
                     className="flex-1 min-h-0"
                 />
                 <DateTimeField
                     label="End:"
                     value={item.timeEnd}
-                    onCommit={value => runUpdateField('timeEnd', value)}
+                    onCommit={value => patch({ timeEnd: value })}
                     className="flex-1 min-h-0"
                 />
             </div>
