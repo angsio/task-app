@@ -1,5 +1,24 @@
 import { useRef, useState } from 'react'
 
+/*
+  The single text primitive: a span that becomes a bare input.
+
+  In:  value           string, shown when inactive and seeded when active
+       active          boolean — the PARENT owns this and decides what
+                       commit/cancel mean (rename vs live-create)
+       onSubmit        (text: string) -> void, on Enter or blur
+       onCancel        () -> void, on Escape
+       disabled        boolean, blocks committing
+       placeholder     string
+       maxLength       number — when set, a counter renders beside the input
+       className       string, on the span/wrapper
+       inputClassName  string, on the input, so the caller sizes the box
+
+  Out: a <span> when inactive, a bare <input> (no form, no button) when active.
+
+  Uncontrolled, so it re-seeds from `value` every time it goes active and a
+  failed write keeps the user's text on screen.
+*/
 export const EditableText = ({
     value,
     active,

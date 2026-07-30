@@ -4,10 +4,23 @@ import { findThemeId } from './utilities.js'
 
 const MODELS = { Task, Event, Reminder }
 
+// (value: string | Date) -> string, readable local date and time
+const stamp = (value) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+
+// (item) -> string, when this item lands, phrased per itemType.
+// The user is approving a write, so the summary must show WHEN — a title and a
+// theme alone give them nothing to check the agent's arithmetic against.
+const when = (item) => {
+    if (item.itemType === 'Event') return `${stamp(item.timeStart)} to ${stamp(item.timeEnd)}`
+    if (item.itemType === 'Reminder') return stamp(item.reminderTime)
+
+    return item.deadline ? `due ${stamp(item.deadline)}` : 'no deadline'
+}
+
 export const createItems = {
     name: 'create_items',
     confirm: true,
-    description: 'Create one or more new items on the user\'s schedule — tasks, events, or reminders. Call this when the user asks to add, schedule, or create something. Several items can be created in a single call.',
+    description: 'Add one or more new items to the user\'s schedule — tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Several items can be created in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -33,33 +46,34 @@ export const createItems = {
         },
         required: ['items']
     },
-    handler: async ({ items } = {}) => {
-        const pending = []
+    summarise: ({ items }) => items.map(item => `${item.title} — ${item.itemType} in ${item.theme}, ${when(item)}`),
+    run: async ({ items } = {}) => {
+        const staged = []
 
         for (const item of items) {
             const Model = MODELS[item.itemType]
-            if (!Model) return { result: { error: `Unknown item type: "${item.itemType}".` } }
+            if (!Model) return { reply: { error: `Unknown item type: "${item.itemType}".` } }
 
             const themeId = await findThemeId(item.theme)
-            if (!themeId) return { result: { error: `No theme named "${item.theme}" exists.` } }
+            if (!themeId) return { reply: { error: `No theme named "${item.theme}" exists.` } }
 
             const doc = new Model({ ...item, theme: themeId })
             try {
                 await doc.validate()
             } catch (invalid) {
-                return { result: { error: `Could not create "${item.title}": ${invalid.message}` } }
+                return { reply: { error: `Could not create "${item.title}": ${invalid.message}` } }
             }
 
-            pending.push({ doc, theme: item.theme })
+            staged.push({ doc, theme: item.theme })
         }
 
-        await Promise.all(pending.map(({ doc }) => doc.save()))
+        await Promise.all(staged.map(({ doc }) => doc.save()))
 
         return {
-            result: {
-                created: pending.map(({ doc, theme }) => ({ id: doc._id, title: doc.title, type: doc.itemType, theme }))
+            reply: {
+                created: staged.map(({ doc, theme }) => ({ id: doc._id, title: doc.title, type: doc.itemType, theme })),
             },
-            documents: pending.map(({ doc }) => doc)
+            documents: staged.map(({ doc }) => doc),
         }
-    }
+    },
 }

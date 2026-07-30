@@ -4,6 +4,8 @@ const styles = {
     input: 'datetime-field bg-transparent text-center text-parchment focus:outline-none',
 }
 
+// (value: string | Date | null) -> string, 'YYYY-MM-DDTHH:mm' in local time
+// ('' when empty). The format a datetime-local input requires.
 const toDateTimeLocal = (value) => {
     if (!value) return ''
     const date = new Date(value)
@@ -11,6 +13,22 @@ const toDateTimeLocal = (value) => {
     return new Date(date.getTime() - offset).toISOString().slice(0, 16)
 }
 
+/*
+  A labelled datetime box.
+
+  In:  label      string, shown to the left
+       value      string | Date, the current value
+       onCommit   (next: string) -> void, called with 'YYYY-MM-DDTHH:mm'
+       className  string, sizes the box (the caller owns its height)
+
+  Out: a <div> wrapping a native datetime-local input.
+
+  Commits once, on blur or Enter, and only when the value actually changed.
+  Two rules it must keep: it is never `disabled` mid-write (disabling a focused
+  input blurs it, throwing the user out after one segment), and it never writes
+  on change (a datetime-local fires change mid-typing, one edit per keystroke).
+  Uncontrolled, so a rejected write leaves the user's typing on screen.
+*/
 export const DateTimeField = ({ label, value, onCommit, className = '' }) => {
     const commit = (event) => {
         const next = event.target.value

@@ -2,38 +2,9 @@ import { useState } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPaperPlane } from '@fortawesome/free-solid-svg-icons'
 
-import { sendMessages, resolveActions } from '../../../api'
-import { useMutation } from '../../../hooks'
 import { List } from '../../../components'
-import { useScheduleContext } from '../ScheduleContext'
-
-const describeToolCall = (call) => {
-    const args = Object.entries(JSON.parse(call.function.arguments || '{}'))
-        .filter(([, value]) => typeof value !== 'object')
-        .map(([field, value]) => `${field}: ${value}`)
-
-    return args.length ? `Used ${call.function.name} (${args.join(', ')})` : `Used ${call.function.name}`
-}
-
-const toBubbles = (messages) => {
-    const bubbles = []
-
-    messages.forEach((message, index) => {
-        if (message.role === 'user') {
-            bubbles.push({ key: `${index}`, kind: 'user', text: message.content })
-        } else if (message.role === 'assistant') {
-            if (message.content) bubbles.push({ key: `${index}-text`, kind: 'assistant', text: message.content })
-
-            message.tool_calls
-                ?.filter(call => messages.some(entry => entry.tool_call_id === call.id))
-                .forEach((call, order) => bubbles.push({ key: `${index}-${order}`, kind: 'tool', text: describeToolCall(call) }))
-        }
-    })
-
-    return bubbles
-}
-
-const pendingItems = (pending) => pending.flatMap(call => call.arguments.items ?? [])
+import { useAgent } from './useAgent'
+import { toBubbles } from './transcript'
 
 const styles = {
     panel:        'bg-obsidian border-b border-border',
@@ -41,7 +12,7 @@ const styles = {
     toolText:     'text-xs italic text-ash',
     bubble:       'text-sm whitespace-pre-wrap rounded-md',
     userBg:       'border border-accent/20 bg-accent/10 text-parchment',
-    botBg:        'border border-border bg-crypt text-parchment',
+    agentBg:      'border border-border bg-crypt text-parchment',
     confirmBox:   'border border-border bg-crypt rounded-md',
     confirmTitle: 'font-display text-sm text-parchment',
     itemList:     'text-sm text-parchment-dim list-disc',
@@ -53,43 +24,16 @@ const styles = {
 
 export const Agent = () => {
     const [input, setInput] = useState('')
-    const [messages, setMessages] = useState([])
-    const [pending, setPending] = useState([])
+    const { messages, pending, busy, ask, approve, decline } = useAgent()
 
-    const { mutate: sendMutation, loading: sending } = useMutation(sendMessages)
-    const { mutate: resolveMutation, loading: resolving } = useMutation(resolveActions)
-
-    const { upsertItem } = useScheduleContext()
-
-    const busy = sending || resolving
     const bubbles = toBubbles(messages)
 
-    const applyTurn = (result) => {
-        setMessages(result.messages)
-        setPending(result.pending)
-        result.documents.forEach(upsertItem)
-    }
-
-    const send = async (event) => {
+    const send = (event) => {
         event.preventDefault()
         if (!input.trim() || busy) return
 
-        const next = [...messages, { role: 'user', content: input }]
-        setMessages(next)
+        ask(input)
         setInput('')
-        setPending([])
-
-        const result = await sendMutation(next)
-        if (!result) return
-
-        applyTurn(result)
-    }
-
-    const resolve = async (approved) => {
-        const result = await resolveMutation(messages, approved)
-        if (!result) return
-
-        applyTurn(result)
     }
 
     const sendOnEnter = (event) => {
@@ -110,35 +54,31 @@ export const Agent = () => {
                     className="w-full"
                     itemClassName="px-3 py-1"
                 >
-                    {bubble => {
-                        if (bubble.kind === 'tool') return (
-                            <div className="w-full flex justify-start">
-                                <span className={`max-w-4/5 px-2 ${styles.toolText}`}>{bubble.text}</span>
-                            </div>
-                        )
-
-                        return (
-                            <div className={`w-full flex ${bubble.kind === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <span className={`max-w-4/5 p-2 ${styles.bubble} ${bubble.kind === 'user' ? styles.userBg : styles.botBg}`}>
-                                    {bubble.text}
-                                </span>
-                            </div>
-                        )
-                    }}
+                    {bubble => bubble.kind === 'tool' ? (
+                        <div className="w-full flex justify-start">
+                            <span className={`max-w-4/5 px-2 ${styles.toolText}`}>{bubble.text}</span>
+                        </div>
+                    ) : (
+                        <div className={`w-full flex ${bubble.kind === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <span className={`max-w-4/5 p-2 ${styles.bubble} ${bubble.kind === 'user' ? styles.userBg : styles.agentBg}`}>
+                                {bubble.text}
+                            </span>
+                        </div>
+                    )}
                 </List>
 
                 {pending.length > 0 && (
                     <div className="w-full flex justify-center px-3 py-1">
                         <div className={`max-w-4/5 w-full flex flex-col gap-2 p-3 ${styles.confirmBox}`}>
-                            <p className={styles.confirmTitle}>Create these items?</p>
+                            <p className={styles.confirmTitle}>Confirm these actions?</p>
                             <ul className={`pl-4 ${styles.itemList}`}>
-                                {pendingItems(pending).map((item, index) => (
-                                    <li key={index}>{item.title} — {item.itemType} in {item.theme}</li>
+                                {pending.flatMap(action => action.lines).map((line, index) => (
+                                    <li key={index}>{line}</li>
                                 ))}
                             </ul>
                             <div className="flex gap-2">
-                                <button type="button" onClick={() => resolve(true)} disabled={resolving} className={`px-3 py-1 ${styles.primaryBtn}`}>Confirm</button>
-                                <button type="button" onClick={() => resolve(false)} disabled={resolving} className={`px-3 py-1 ${styles.cancelBtn}`}>Cancel</button>
+                                <button type="button" onClick={approve} disabled={busy} className={`px-3 py-1 ${styles.primaryBtn}`}>Confirm</button>
+                                <button type="button" onClick={decline} disabled={busy} className={`px-3 py-1 ${styles.cancelBtn}`}>Cancel</button>
                             </div>
                         </div>
                     </div>

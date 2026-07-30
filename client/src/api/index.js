@@ -1,3 +1,3 @@
 export { getThemes, createTheme, updateTheme, deleteTheme } from './themes'
 export { getItems, createItem, updateItem, deleteItem } from './items'
-export { sendMessages, resolveActions } from './agent'
+export { sendTurn } from './agent'

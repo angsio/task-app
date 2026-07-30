@@ -1,6 +1,6 @@
-# ARCHITECTURE — task-app client
+# ARCHITECTURE — task-app
 
-How the code is **wired**. For how a `className` is written, see `styling.md`.
+How the code is **wired**, both sides of the HTTP barrier. For how a `className` is written, see `styling.md`.
 
 Guidelines, not law. They exist so that adding the next feature is *copying an
 existing shape, never inventing one*. That is the only test for whether a rule
@@ -14,7 +14,8 @@ Everything below is an application of that. Deviations get justified out loud.
 1. [Layers](#1-layers) · 2. [api/ vs hooks/](#2-api-vs-hooks) ·
 3. [The cache invariant](#3-the-cache-invariant) · 4. [Errors](#4-errors) ·
 5. [Feature shape](#5-feature-shape) · 6. [Item cards](#6-item-cards) ·
-7. [Shared components](#7-shared-components) · 8. [Naming](#8-naming)
+7. [Shared components](#7-shared-components) · 8. [The agent](#8-the-agent) ·
+9. [Naming](#9-naming)
 
 ---
 
@@ -237,7 +238,74 @@ is what `inputClassName` is for.
 
 ---
 
-## 8. Naming
+## 8. The agent
+
+**One endpoint, one turn, no session.** `POST /agent` takes the whole transcript
+and returns `{ messages, pending, documents }`. The server stores nothing between
+calls, so the transcript *is* the state and the client owns it (`useAgent`).
+Answering a confirmation is the same call with `approved: true|false` attached —
+there is no second endpoint, because "continue this turn" is the only thing that
+ever happens.
+
+**The model earns its tools.** It starts holding exactly one, `find_tools`, so
+every turn is a clean fork: answer in words, or search for a capability. What it
+finds is offered for the rest of the turn, and it may search again at any step.
+
+```
+prompt -> chat ─┬─ no tool call ─────────────> reply, done
+                └─ find_tools -> vector match -> tools offered -> chat -> ...
+                                                    └─ confirm tool? -> pause, ask the user
+```
+
+This costs one extra round trip versus retrieving up front, and buys two things:
+the model searches with a *targeted* query ("create a recurring task") instead of
+the raw prompt, and chit-chat skips retrieval entirely. At three tools it is an
+investment; it is the right shape at thirty.
+
+> **The system prompt is load-bearing.** It is the only thing standing between a
+> retrieval-based agent and a confident hallucination, and it carries three jobs:
+> that the model cannot see the schedule and must call `find_tools`; that it must
+> **read before it writes** when a request refers to something already scheduled
+> ("after my meeting"); and the clock. It is rebuilt every turn rather than kept
+> in the transcript, because a stored system message would pin "now" to whenever
+> the conversation started.
+>
+> **Timezone is an explicit contract, not an assumption.** Tools report UTC; the
+> user speaks local wall-clock. The prompt states the current time, the zone and
+> the offset, and requires written times to carry that offset
+> (`...T14:00:00-04:00`). Without it the model defaulted to midnight UTC and put
+> "in two hours" most of a day out.
+
+A tool's `description` does **double duty** — it is the usage instruction *and*
+the text that gets embedded for retrieval. So write it with the vocabulary a
+searching model would use ("check for a clash", "look up when an existing item
+is"), not just what the tool returns. **Changing a description means re-running
+`node agent/seedTools.js`**, or the vector index still matches the old wording.
+
+**Layers, and what each may know:**
+
+| piece | knows | never |
+|---|---|---|
+| `tools/*.js` | the models and the data layer | the loop, the client, the transcript |
+| `runAgent.js` | the message protocol and which tools exist | what any tool *does* |
+| `routes/agent.js` | HTTP | anything about tools |
+| `useAgent.js` | the transcript and what awaits a yes/no | any tool's argument shape |
+
+A tool returns `{ reply, documents?, offer? }` — `reply` is the only part the
+model reads, `documents` feeds the client cache (§3), `offer` widens what may be
+called next. A `confirm` tool also supplies `summarise(args)`, so a pending action
+reaches the client as **text it can render**, not arguments it must interpret.
+That is what keeps tool schemas from leaking across the barrier.
+
+**Retrieval is seeded from `RETRIEVABLE`, not `TOOLS`** — `find_tools` is always
+in hand, and embedding it would let a search return the search.
+
+**The loop cannot run away silently.** Exhausting `MAX_STEPS` appends a plain
+assistant message saying so, rather than returning as if the model had finished.
+
+---
+
+## 9. Naming
 
 | thing | pattern | example |
 |---|---|---|

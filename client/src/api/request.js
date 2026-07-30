@@ -1,5 +1,16 @@
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
 
+/*
+  The single sink every api/ function goes through.
+
+  In:  path    string, appended to the API base ('/items/123')
+       method  string, required — an omitted verb throws rather than GETs
+       body    object, JSON-encoded when present
+
+  Out: Promise<any>, the parsed JSON body.
+       Throws Error(serverMessage) on a non-2xx, which useMutation turns into a
+       toast and useQuery into an inline message.
+*/
 export const request = async (path, { method, body } = {}) => {
     if (!method) throw new Error(`request(${path}) needs an explicit method`)
 

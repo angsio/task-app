@@ -1,11 +1,8 @@
 import { request } from './request'
 
-export const sendMessages = (messages) => request('/agent', {
-    method: 'POST',
-    body: { messages }
-})
-
-export const resolveActions = (messages, approved) => request('/agent/confirm', {
+// (messages: message[], approved?: boolean) -> Promise<{ messages, pending, documents }>
+// Pass `approved` only when answering a pending confirmation.
+export const sendTurn = (messages, approved) => request('/agent', {
     method: 'POST',
     body: { messages, approved }
 })

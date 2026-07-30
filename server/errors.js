@@ -1,3 +1,4 @@
+// Throw this to choose the status code; anything else becomes a 500.
 export class ApiError extends Error {
     constructor(statusCode, message) {
         super(message)
@@ -5,6 +6,14 @@ export class ApiError extends Error {
     }
 }
 
+/*
+  In:  res    the Express response
+       error  any thrown value
+
+  Out: sends { error: string } with a status inferred from the error —
+       ApiError keeps its own code, mongoose validation and cast errors
+       become 400, everything else is logged and returned as a 500.
+*/
 export const handleError = (res, error) => {
     if (error instanceof ApiError) {
         return res.status(error.statusCode).json({ error: error.message })

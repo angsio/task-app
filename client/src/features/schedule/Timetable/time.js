@@ -7,6 +7,7 @@ const SPAN = {
     Reminder: item => ({ start: item.reminderTime, end: null }),
 }
 
+// (value: string | Date) -> string, 'HH:mm' in local time
 export const toHourMinute = (value) => {
     const date = new Date(value)
     const hours = String(date.getHours()).padStart(2, '0')
@@ -14,10 +15,13 @@ export const toHourMinute = (value) => {
     return `${hours}:${minutes}`
 }
 
+// (date: Date) -> number, minutes elapsed since local midnight
 const minutesInto = (date) => date.getHours() * 60 + date.getMinutes()
 
+// (date: Date) -> string, a stable per-day key for grouping
 export const dayKey = (date) => date.toDateString()
 
+// () -> Date[], the seven days of the current week starting Monday at 00:00
 export const weekDays = () => {
     const monday = new Date()
     monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
@@ -30,6 +34,17 @@ export const weekDays = () => {
     })
 }
 
+/*
+  Place items on the timetable grid.
+
+  In:  items  item[] of any itemType
+  Out: Map<dayKey, placed[]>, each placed { item, style: { top, height } }
+       as CSS percentages of a full day.
+
+  An item with no time for its type is skipped. One with no end (a task or
+  reminder) is given a fixed slice so it stays visible, and one running past
+  midnight is clipped to its own day.
+*/
 export const layoutByDay = (items) => {
     const byDay = new Map()
 
