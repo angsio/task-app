@@ -12,7 +12,7 @@ import { createItems } from './createItems.js'
                                     approval, so the client renders text rather
                                     than reading this tool's argument shape
                                     (confirm tools only)
-    run(args)                       does the work, returns the shape below
+    run(args, { owner })            does the work for that user, returns below
 
   run answers { reply, documents?, offer? }:
     reply      the ONLY part the model reads back — keep it small, it costs tokens

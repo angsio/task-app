@@ -12,7 +12,7 @@ router.post('/', async (req, res) => {
     const { messages, approved } = req.body
     if (!messages?.length) throw new ApiError(400, 'Messages are required.')
 
-    res.status(200).json(await runAgent({ messages, approved }))
+    res.status(200).json(await runAgent({ messages, approved, owner: req.user.id }))
 })
 
 export { router as agentRouter }

@@ -62,12 +62,13 @@ const awaitingApproval = (messages) => {
     return (last?.tool_calls ?? []).filter(call => needsApproval(call) && !answered.has(call.id))
 }
 
-// (call: toolCall) -> Promise<{ reply, documents?, offer? }>
-const invoke = async (call) => {
+// (call: toolCall, owner: string) -> Promise<{ reply, documents?, offer? }>
+// Every tool is handed the owner so it can only ever touch that user's data.
+const invoke = async (call, owner) => {
     const tool = TOOLS[call.function.name]
     if (!tool) return { reply: { error: `Unknown tool: ${call.function.name}` } }
 
-    return tool.run(JSON.parse(call.function.arguments))
+    return tool.run(JSON.parse(call.function.arguments), { owner })
 }
 
 // (turn, call: toolCall, outcome: { reply, documents?, offer? }) -> void, mutates turn
@@ -104,6 +105,7 @@ const result = (turn, pending) => ({
   In:  messages   message[], the whole transcript so far. The server keeps no
                   session, so this is the entire state and it round-trips.
        approved   boolean, ONLY when answering a pending confirmation
+       owner      string, the signed-in user's id; scopes every tool
 
   Out: { messages, pending, documents }
        messages   message[], the transcript to send back next turn
@@ -114,7 +116,7 @@ const result = (turn, pending) => ({
   or asks for a capability. Whatever it finds is offered for the rest of the
   turn, and it may search again at any step.
 */
-export const runAgent = async ({ messages, approved }) => {
+export const runAgent = async ({ messages, approved, owner }) => {
     const turn = {
         messages: withSystem(messages),
         offered: new Set([ENTRY_TOOL]),
@@ -123,7 +125,7 @@ export const runAgent = async ({ messages, approved }) => {
 
     if (approved !== undefined) {
         for (const call of awaitingApproval(turn.messages)) {
-            absorb(turn, call, approved ? await invoke(call) : { reply: DECLINED })
+            absorb(turn, call, approved ? await invoke(call, owner) : { reply: DECLINED })
         }
     }
 
@@ -135,7 +137,7 @@ export const runAgent = async ({ messages, approved }) => {
         if (!calls.length) return result(turn, [])
 
         for (const call of calls.filter(call => !needsApproval(call))) {
-            absorb(turn, call, await invoke(call))
+            absorb(turn, call, await invoke(call, owner))
         }
 
         const held = calls.filter(needsApproval)

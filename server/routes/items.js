@@ -7,8 +7,18 @@ const router = express.Router()
 
 const MODELS = { Task, Event, Reminder }
 
+// (req) -> { _id, owner }
+// Matching on the owner too means a stranger's id is simply "not found" rather
+// than someone else's item.
+const ownedBy = (req) => ({ _id: req.params.id, owner: req.user.id })
+
+// (body: object) -> object without `owner`
+// Ownership comes from the session, never the request, or a caller could hand
+// their item to somebody else.
+const withoutOwner = ({ owner, ...fields }) => fields
+
 router.get('/', async (req, res) => {
-    const filter = {}
+    const filter = { owner: req.user.id }
     if (req.query.theme) filter.theme = req.query.theme
     if (req.query.itemType) filter.itemType = req.query.itemType
 
@@ -20,21 +30,24 @@ router.post('/', async (req, res) => {
     const Model = MODELS[req.body.itemType]
     if (!Model) throw new ApiError(400, `Unknown item type: ${req.body.itemType}`)
 
-    const item = await Model.create(req.body)
+    const item = await Model.create({ ...withoutOwner(req.body), owner: req.user.id })
     res.status(201).json(item)
 })
 
 router.patch('/:id', async (req, res) => {
-    const item = await Item.findById(req.params.id)
+    const item = await Item.findOne(ownedBy(req))
     if (!item) throw new ApiError(404, 'Item not found.')
-    item.set(req.body)
+
+    item.set(withoutOwner(req.body))
     await item.save()
+
     res.status(200).json(item)
 })
 
 router.delete('/:id', async (req, res) => {
-    const item = await Item.findByIdAndDelete(req.params.id)
+    const item = await Item.findOneAndDelete(ownedBy(req))
     if (!item) throw new ApiError(404, 'Item not found.')
+
     res.status(200).json(item)
 })
 

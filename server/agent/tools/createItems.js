@@ -47,17 +47,17 @@ export const createItems = {
         required: ['items']
     },
     summarise: ({ items }) => items.map(item => `${item.title} — ${item.itemType} in ${item.theme}, ${when(item)}`),
-    run: async ({ items } = {}) => {
+    run: async ({ items } = {}, { owner }) => {
         const staged = []
 
         for (const item of items) {
             const Model = MODELS[item.itemType]
             if (!Model) return { reply: { error: `Unknown item type: "${item.itemType}".` } }
 
-            const themeId = await findThemeId(item.theme)
+            const themeId = await findThemeId(item.theme, owner)
             if (!themeId) return { reply: { error: `No theme named "${item.theme}" exists.` } }
 
-            const doc = new Model({ ...item, theme: themeId })
+            const doc = new Model({ ...item, theme: themeId, owner })
             try {
                 await doc.validate()
             } catch (invalid) {

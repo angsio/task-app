@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 
 const itemSchema = new mongoose.Schema({
+    // Who this belongs to. Set from the session, never from the request body.
+    owner: { type: String, required: true, index: true },
     title: { type: String, required: true, trim: true },
     theme: { type: mongoose.Schema.Types.ObjectId, ref: 'Theme', required: true, index: true },
 }, { timestamps: true, discriminatorKey: 'itemType' })

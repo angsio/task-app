@@ -5,6 +5,12 @@ services:
     container_name: taskapp-server
     env_file:
       - "./server/.env"
+    # These override anything of the same name in .env, so that file can stay on
+    # its dev values and never be edited when deploying. auth-server is reachable
+    # by container name because both stacks share the external `web` network.
+    environment:
+      AUTH_URL: "http://auth-server:5002"
+      ALLOWED_ORIGINS: "https://tasks.frangiclave.com"
     restart: unless-stopped
     networks:
       - web
