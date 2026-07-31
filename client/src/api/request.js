@@ -1,5 +1,6 @@
+import { toLogin } from '../session'
+
 const BASE = import.meta.env.VITE_API_URL ?? '/api'
-const AUTH = import.meta.env.VITE_AUTH_URL ?? 'http://localhost:5175'
 
 /*
   The single sink every api/ function goes through.
@@ -25,7 +26,7 @@ export const request = async (path, { method, body } = {}) => {
     })
 
     if (res.status === 401) {
-        window.location.href = `${AUTH}/login?next=${encodeURIComponent(window.location.href)}`
+        toLogin()
         return new Promise(() => {})
     }
 
