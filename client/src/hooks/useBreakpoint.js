@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-// { md: string, lg: string } — Tailwind's own defaults. If the theme ever
+// { md: string, lg: string }. Tailwind's own defaults; if the theme ever
 // overrides them, match it here.
 const WIDTHS = { md: '48rem', lg: '64rem' }
 
@@ -29,7 +29,7 @@ const listen = (onChange) => {
   In:  nothing.
   Out: 'base' | 'md' | 'lg'. Re-renders the caller when the window crosses one.
 
-  Only for layout a CLASS cannot express — a value React has to compute, like a
+  Only for layout a CLASS cannot express: a value React has to compute, like a
   count fed into an inline style. If plain `md:`/`lg:` utilities can do the job,
   use those instead; they cost no JS and no re-render.
 */

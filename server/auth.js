@@ -17,7 +17,7 @@ const APP = 'tasks'
 
   The session cookie is opaque to us, so we hand it to the auth service and ask
   who it belongs to. This app never sees a password and never reads the accounts
-  database — it only learns an id it can scope queries by.
+  database. It only learns an id it can scope queries by.
 
   `apps: []` means unrestricted, which is every account today. Put 'tasks' in an
   account's list (alongside any other apps) to limit it to those.

@@ -12,7 +12,7 @@ import { useNotifications } from '../notifications'
        loading  boolean, true while in flight
 
   Failures are caught here and pushed to the app-wide notification sink, so
-  callers never try/catch and there is no `error` to display — check for null.
+  callers never try/catch and there is no `error` to display. Check for null.
 */
 export const useMutation = (asyncFn) => {
     const [loading, setLoading] = useState(false)

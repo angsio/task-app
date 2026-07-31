@@ -23,13 +23,13 @@ const countAt = (count, breakpoint) => {
     keyExtractor   (item) -> string | number
     children       (item) -> node, the contents of one cell
     flow           'x' fills rows then wraps | 'y' fills columns then wraps
-    across         number | { base, md, lg } — tracks on the fixed cross axis
+    across         number | { base, md, lg }, tracks on the fixed cross axis
                    (flow 'x' -> columns). Default 1.
-    visible        number | { base, md, lg } — items along the flow axis before
+    visible        number | { base, md, lg }, items along the flow axis before
                    it overflows. Omit for content-sized tracks.
-    className      string — styles the grid box, and owns its overflow
-    itemClassName  string — styles every cell
-    trailing       node — one extra cell after the items, wrapped like the rest
+    className      string, styles the grid box, and owns its overflow
+    itemClassName  string, styles every cell
+    trailing       node, one extra cell after the items, wrapped like the rest
 
   Out: a <div> grid. Assumes no grid gap; item spacing belongs on itemClassName.
 

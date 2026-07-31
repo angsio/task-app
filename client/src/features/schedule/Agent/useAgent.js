@@ -11,7 +11,7 @@ import { useScheduleContext } from '../ScheduleContext'
   on every turn. This hook owns it, along with whatever is waiting on the user's
   yes/no, so the panel below only renders.
 
-  In:  nothing — it reads upsertItem from ScheduleContext.
+  In:  nothing. It reads upsertItem from ScheduleContext.
 
   Out: { messages, pending, busy, ask, approve, decline }
        messages  message[], the transcript so far

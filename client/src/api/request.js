@@ -5,7 +5,7 @@ const AUTH = import.meta.env.VITE_AUTH_URL ?? 'http://localhost:5175'
   The single sink every api/ function goes through.
 
   In:  path    string, appended to the API base ('/items/123')
-       method  string, required — an omitted verb throws rather than GETs
+       method  string, required, an omitted verb throws rather than GETs
        body    object, JSON-encoded when present
 
   Out: Promise<any>, the parsed JSON body.

@@ -6,7 +6,7 @@ const MAX_MATCHES = 3
 
 export const findTools = {
     name: 'find_tools',
-    description: 'Search for a tool that can read or change the user\'s schedule. Call this before doing anything with tasks, events, reminders or themes, and call it again whenever the next step needs a capability you do not hold yet — reading first and then writing normally takes two searches. Describe the ONE capability you need right now in plain words, such as "see what is already scheduled on a day" or "create an event".',
+    description: 'Search for a tool that can read or change the user\'s schedule. Call this before doing anything with tasks, events, reminders or themes, and call it again whenever the next step needs a capability you do not hold yet, reading first and then writing normally takes two searches. Describe the ONE capability you need right now in plain words, such as "see what is already scheduled on a day" or "create an event".',
     parameters: {
         type: 'object',
         properties: {

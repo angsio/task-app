@@ -1,5 +1,5 @@
 // (call: toolCall) -> string
-// Scalar arguments only — enough to show what a call did without this file
+// Scalar arguments only. Enough to show what a call did without this file
 // knowing any tool's schema.
 const describeCall = (call) => {
     const args = Object.entries(JSON.parse(call.function.arguments || '{}'))
@@ -16,7 +16,7 @@ const describeCall = (call) => {
   Out: bubble[], each { key: string, kind: 'user' | 'agent' | 'tool', text: string }
 
   A tool call only appears once it has a result, so an action still awaiting
-  approval is not described twice — the confirm box is already showing it.
+  approval is not described twice; the confirm box is already showing it.
 */
 export const toBubbles = (messages) => {
     const answered = new Set(messages.map(message => message.tool_call_id).filter(Boolean))

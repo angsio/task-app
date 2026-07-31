@@ -18,7 +18,7 @@ import { useBoardContext } from '../BoardContext'
        cancelRename  () -> void
        runDelete     () -> Promise<void>
        patch         (fields: object) -> Promise<void>, for the type-specific
-                     body — a deadline, a completed flag, a start time
+                     body: a deadline, a completed flag, a start time
        busy          boolean, true while any of the above is in flight
 
   Only the shared BEHAVIOUR lives here. Each card still writes its own layout

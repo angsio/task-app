@@ -9,7 +9,7 @@ export class ApiError extends Error {
 /*
   The one place an error becomes a response. Mounted last in index.js.
 
-  In:  error  any thrown value — Express 5 forwards a rejected promise from any
+  In:  error  any thrown value. Express 5 forwards a rejected promise from any
               async handler here, so routes never try/catch
 
   Out: sends { error: string }, with the status inferred from the error:

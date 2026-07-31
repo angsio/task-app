@@ -4,13 +4,13 @@ import { useRef, useState } from 'react'
   The single text primitive: a span that becomes a bare input.
 
   In:  value           string, shown when inactive and seeded when active
-       active          boolean — the PARENT owns this and decides what
+       active          boolean. The PARENT owns this and decides what
                        commit/cancel mean (rename vs live-create)
        onSubmit        (text: string) -> void, on Enter or blur
        onCancel        () -> void, on Escape
        disabled        boolean, blocks committing
        placeholder     string
-       maxLength       number — when set, a counter renders beside the input
+       maxLength       number. When set, a counter renders beside the input
        className       string, on the span/wrapper
        inputClassName  string, on the input, so the caller sizes the box
 

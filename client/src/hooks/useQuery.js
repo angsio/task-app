@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
   The generic READ. Runs asyncFn on mount, and again whenever deps change.
 
   In:  asyncFn  () -> Promise<any>
-       deps     array — what should trigger a refetch. Defaults to [], meaning
+       deps     array, what should trigger a refetch. Defaults to [], meaning
                 fetch once. If asyncFn closes over a changing value, that value
                 belongs here: useQuery(() => getItems(themeId), [themeId]).
 
@@ -14,7 +14,7 @@ import { useState, useEffect } from 'react'
        loading  boolean, true while in flight
        error    Error, or null
 
-  Only `deps` triggers a refetch — asyncFn's identity deliberately does not, so
+  Only `deps` triggers a refetch. asyncFn's identity deliberately does not, so
   passing an inline arrow cannot loop. The effect still calls the newest asyncFn,
   because the closure it runs was built by the render that scheduled it.
 
@@ -49,7 +49,7 @@ export const useQuery = (asyncFn, deps = []) => {
             })
 
         return () => { live = false }
-        // asyncFn is intentionally not a dependency — see above.
+        // asyncFn is intentionally not a dependency, see above.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, deps)
 

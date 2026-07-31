@@ -8,7 +8,7 @@ const MODELS = { Task, Event, Reminder }
 const stamp = (value) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 // (item) -> string, when this item lands, phrased per itemType.
-// The user is approving a write, so the summary must show WHEN — a title and a
+// The user is approving a write, so the summary must show WHEN, a title and a
 // theme alone give them nothing to check the agent's arithmetic against.
 const when = (item) => {
     if (item.itemType === 'Event') return `${stamp(item.timeStart)} to ${stamp(item.timeEnd)}`
@@ -20,7 +20,7 @@ const when = (item) => {
 export const createItems = {
     name: 'create_items',
     confirm: true,
-    description: 'Add one or more new items to the user\'s schedule — tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Several items can be created in one call.',
+    description: 'Add one or more new items to the user\'s schedule, tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Several items can be created in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -46,7 +46,7 @@ export const createItems = {
         },
         required: ['items']
     },
-    summarise: ({ items }) => items.map(item => `${item.title} — ${item.itemType} in ${item.theme}, ${when(item)}`),
+    summarise: ({ items }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${when(item)}`),
     run: async ({ items } = {}, { owner }) => {
         const staged = []
 

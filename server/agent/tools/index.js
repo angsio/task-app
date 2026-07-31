@@ -15,7 +15,7 @@ import { createItems } from './createItems.js'
     run(args, { owner })            does the work for that user, returns below
 
   run answers { reply, documents?, offer? }:
-    reply      the ONLY part the model reads back — keep it small, it costs tokens
+    reply      the ONLY part the model reads back, keep it small, it costs tokens
     documents  items this tool wrote, forwarded to the client so its cache updates
     offer      tool names to make callable from here on (find_tools only)
 */

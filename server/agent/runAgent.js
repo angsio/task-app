@@ -22,13 +22,13 @@ const systemPrompt = () => {
 
 Right now it is ${now.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })} in ${zone} (UTC${offset}). Resolve "today", "tomorrow", "tonight" and "next week" against that.
 
-You cannot see the schedule and you remember nothing about it between messages. Call find_tools to obtain a tool, then call that tool. You may call find_tools as many times as you need — search again whenever the next step needs a capability you do not hold yet.
+You cannot see the schedule and you remember nothing about it between messages. Call find_tools to obtain a tool, then call that tool. You may call find_tools as many times as you need, search again whenever the next step needs a capability you do not hold yet.
 
-GATHER BEFORE YOU ACT. If the request mentions anything already on the schedule — "after my meeting", "the same day as X", "when am I free" — list the relevant items and read their real times BEFORE you create or change anything. Never guess a time, a title or a theme, and never state that something is on the schedule unless a tool told you so.
+GATHER BEFORE YOU ACT. If the request mentions anything already on the schedule, "after my meeting", "the same day as X", "when am I free", list the relevant items and read their real times BEFORE you create or change anything. Never guess a time, a title or a theme, and never state that something is on the schedule unless a tool told you so.
 
 TIMES. Tools report UTC, ending in Z. The user speaks in local wall-clock time, so write times with the local offset: 2 pm local is 2026-07-30T14:00:00${offset}. Never write a bare Z time for something the user described in words, and never copy a Z time from a tool into a time the user gave you.
 
-If the user is only chatting, just reply — do not call find_tools. Always finish answering everything the user asked, even after using a tool.`
+If the user is only chatting, just reply, do not call find_tools. Always finish answering everything the user asked, even after using a tool.`
 }
 
 const DECLINED = {
@@ -53,7 +53,7 @@ const needsApproval = (call) => TOOLS[call.function.name]?.confirm === true
 const specs = (turn) => [...turn.offered].map(name => toSpec(TOOLS[name]))
 
 // (messages: message[]) -> toolCall[]
-// Calls on the last assistant message that never got a tool response — exactly
+// Calls on the last assistant message that never got a tool response, exactly
 // what the client was asked to approve.
 const awaitingApproval = (messages) => {
     const last = messages.findLast(message => message.role === 'assistant')
