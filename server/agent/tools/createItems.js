@@ -1,6 +1,6 @@
 import { Task, Event, Reminder } from '../../models/index.js'
 
-import { findThemeId, inZone } from './utilities.js'
+import { findThemeIds, inZone } from './utilities.js'
 
 const MODELS = { Task, Event, Reminder }
 
@@ -49,11 +49,15 @@ export const createItems = {
     run: async ({ items } = {}, { owner }) => {
         const staged = []
 
+        // Every theme named in the batch, resolved in one query up front rather
+        // than one per item.
+        const themeIds = await findThemeIds(items.map(item => item.theme), owner)
+
         for (const item of items) {
             const Model = MODELS[item.itemType]
             if (!Model) return { reply: { error: `Unknown item type: "${item.itemType}".` } }
 
-            const themeId = await findThemeId(item.theme, owner)
+            const themeId = themeIds.get(item.theme?.trim().toLowerCase())
             if (!themeId) return { reply: { error: `No theme named "${item.theme}" exists.` } }
 
             const doc = new Model({ ...item, theme: themeId, owner })

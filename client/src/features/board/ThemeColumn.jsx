@@ -3,7 +3,7 @@ import { faPen, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { updateTheme, deleteTheme } from '../../api'
 import { useMutation } from '../../hooks'
 import { EditableText, List, ColorPicker, IconButton } from '../../components'
-import { useBoardContext } from './BoardContext'
+import { useThemes, useItems } from '../../data'
 import { TaskCard, EventCard, ReminderCard } from './ItemCards'
 import { CreateItem } from './CreateItem'
 
@@ -25,7 +25,8 @@ export const ThemeColumn = ({ theme, items }) => {
     const { mutate: updateThemeMutation, loading: updatingTheme } = useMutation(updateTheme)
     const { mutate: deleteThemeMutation, loading: deletingTheme } = useMutation(deleteTheme)
 
-    const { upsertTheme, removeTheme, removeItem } = useBoardContext()
+    const { upsert: upsertTheme, remove: removeTheme } = useThemes()
+    const { remove: removeItems } = useItems()
 
     const submitRenameTheme = async (name) => {
         if (!name.trim()) {
@@ -54,7 +55,7 @@ export const ThemeColumn = ({ theme, items }) => {
         if (!deleted) return
 
         removeTheme(deleted)
-        items.forEach(item => removeItem(item))
+        removeItems(...items)
     }
 
     return (

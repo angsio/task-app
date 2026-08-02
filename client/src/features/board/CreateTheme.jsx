@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '../../hooks'
 import { createTheme } from '../../api'
 import { EditableText } from '../../components'
-import { useBoardContext } from './BoardContext'
+import { useThemes } from '../../data'
 
 const styles = {
     draft:     'bg-obsidian/60 border border-dashed border-border rounded-lg',
@@ -14,7 +14,7 @@ export const CreateTheme = () => {
     const [creating, setCreating] = useState(false)
 
     const { mutate: createThemeMutation, loading } = useMutation(createTheme)
-    const { upsertTheme } = useBoardContext()
+    const { upsert: upsertTheme } = useThemes()
 
     const submitCreateTheme = async (name) => {
         if (!name.trim()) {

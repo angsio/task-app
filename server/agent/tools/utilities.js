@@ -2,10 +2,46 @@ import { Theme } from '../../models/index.js'
 
 const SERVER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 
+/*
+  (text: string) -> string, safe to drop inside a RegExp literal.
+
+  Theme names reach here from the model, which got them from whatever the user
+  typed. Unescaped, "Work (Q3)" becomes /^Work (Q3)$/ where the brackets are a
+  capture group, so the theme cannot be found by its own name, and "C++" throws
+  a SyntaxError that surfaces as a 500 mid-conversation.
+*/
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+// (name: string) -> RegExp matching exactly that name, ignoring case
+const exactly = (name) => new RegExp(`^${escapeRegex(name.trim())}$`, 'i')
+
+/*
+  Resolve many theme names at once.
+
+  In:  names  string[], as the model wrote them. Duplicates and blanks are fine
+       owner  string, the session's account
+  Out: Promise<Map<string, ObjectId>>, keyed by lowercased name
+
+  One query regardless of how many items are being created. The loop that
+  preceded this ran a findOne per item, so a five-item batch under one theme
+  cost five identical round trips.
+*/
+export const findThemeIds = async (names, owner) => {
+    const wanted = [...new Set(names.map(name => name?.trim()).filter(Boolean))]
+    if (!wanted.length) return new Map()
+
+    const themes = await Theme.find({
+        owner,
+        name: { $in: wanted.map(exactly) },
+    }).select('name').lean()
+
+    return new Map(themes.map(theme => [theme.name.toLowerCase(), theme._id]))
+}
+
 // (name: string, owner: string) -> Promise<ObjectId | null>
 // Scoped to the owner, so a theme name only ever resolves within their board.
 export const findThemeId = async (name, owner) => {
-    const theme = await Theme.findOne({ name: new RegExp(`^${name}$`, 'i'), owner }).lean()
+    const theme = await Theme.findOne({ name: exactly(name), owner }).lean()
     return theme?._id ?? null
 }
 

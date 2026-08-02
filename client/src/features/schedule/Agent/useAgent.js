@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { sendTurn } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { useScheduleContext } from '../ScheduleContext'
+import { useItems } from '../../../data'
 
 /*
   The agent conversation.
@@ -11,7 +11,7 @@ import { useScheduleContext } from '../ScheduleContext'
   on every turn. This hook owns it, along with whatever is waiting on the user's
   yes/no, so the panel below only renders.
 
-  In:  nothing. It reads upsertItem from ScheduleContext.
+  In:  nothing. It reads upsert from useItems.
 
   Out: { messages, pending, busy, ask, approve, decline }
        messages  message[], the transcript so far
@@ -30,12 +30,12 @@ export const useAgent = () => {
     const [pending, setPending] = useState([])
 
     const { mutate: sendTurnMutation, loading: busy } = useMutation(sendTurn)
-    const { upsertItem } = useScheduleContext()
+    const { upsert: upsertItem } = useItems()
 
     const take = (turn) => {
         setMessages(turn.messages)
         setPending(turn.pending)
-        turn.documents.forEach(upsertItem)
+        upsertItem(...turn.documents)
     }
 
     const ask = async (text) => {

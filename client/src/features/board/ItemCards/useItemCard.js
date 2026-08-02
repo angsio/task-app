@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { updateItem, deleteItem } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { useBoardContext } from '../BoardContext'
+import { useItems } from '../../../data'
 
 /*
   Everything every item card does regardless of its type: rename it, delete it,
@@ -30,7 +30,7 @@ export const useItemCard = (item) => {
     const { mutate: updateItemMutation, loading: updating } = useMutation(updateItem)
     const { mutate: deleteItemMutation, loading: deleting } = useMutation(deleteItem)
 
-    const { upsertItem, removeItem } = useBoardContext()
+    const { upsert: upsertItem, remove: removeItem } = useItems()
 
     const patch = async (fields) => {
         const updated = await updateItemMutation(item._id, fields)

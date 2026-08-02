@@ -7,28 +7,37 @@ import { useQuery } from './useQuery'
   In:  fetchFn  () -> Promise<doc[]>, each doc having an _id
        deps     array, passed straight to useQuery
 
-  Out: { data, loading, error, upsert, remove }
+  Out: { data, loading, error, refetch, upsert, remove }
        data     doc[], or null until loaded
-       upsert   (doc) -> void, adds it or replaces the one with that _id
-       remove   (doc) -> void, drops the one with that _id
+       refetch  () -> void, reload from the server
+       upsert   (...docs) -> void, adds each or replaces the one with that _id
+       remove   (...docs) -> void, drops each
 
-  Hides raw setData on purpose: upsert and remove are the only two cache
-  operations the app needs, so no feature rewrites them.
+  Both take any number of documents and walk the list once, so a cascade or a
+  batch from the agent costs one pass rather than one per document.
+
+  Hides raw setData on purpose: these are the only cache operations the app
+  needs, so no feature rewrites them.
 */
-export const useCollection = (fetchFn, deps) => {
-    const { data, setData, loading, error } = useQuery(fetchFn, deps)
+export const useCollection = (fetchFn, deps = []) => {
+    const { data, setData, loading, error, refetch } = useQuery(fetchFn, deps)
 
-    const upsert = (doc) => setData(current => {
-        const list = current ?? []
-        const exists = list.some(existing => existing._id === doc._id)
-        return exists
-            ? list.map(existing => existing._id === doc._id ? doc : existing)
-            : [...list, doc]
+    const upsert = (...docs) => setData(current => {
+        const list = [...(current ?? [])]
+
+        for (const doc of docs) {
+            const at = list.findIndex(existing => existing._id === doc._id)
+            if (at === -1) list.push(doc)
+            else list[at] = doc
+        }
+
+        return list
     })
 
-    const remove = (doc) => setData(current =>
-        (current ?? []).filter(existing => existing._id !== doc._id)
-    )
+    const remove = (...docs) => setData(current => {
+        const dropped = new Set(docs.map(doc => doc._id))
+        return (current ?? []).filter(existing => !dropped.has(existing._id))
+    })
 
-    return { data, loading, error, upsert, remove }
+    return { data, loading, error, refetch, upsert, remove }
 }

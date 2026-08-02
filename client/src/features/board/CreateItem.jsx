@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '../../hooks'
 import { createItem } from '../../api'
 import { EditableText } from '../../components'
-import { useBoardContext } from './BoardContext'
+import { useItems } from '../../data'
 
 const ITEM_TYPES = ['Task', 'Event', 'Reminder']
 
@@ -31,7 +31,7 @@ export const CreateItem = ({ themeId }) => {
     const [type, setType] = useState(null)
 
     const { mutate: createItemMutation, loading } = useMutation(createItem)
-    const { upsertItem } = useBoardContext()
+    const { upsert: upsertItem } = useItems()
 
     const submitCreateItem = async (title) => {
         if (!title.trim()) {

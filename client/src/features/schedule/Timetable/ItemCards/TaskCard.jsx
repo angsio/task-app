@@ -1,6 +1,6 @@
 import { updateItem } from '../../../../api'
 import { useMutation } from '../../../../hooks'
-import { useScheduleContext } from '../../ScheduleContext'
+import { useItems } from '../../../../data'
 import { toHourMinute } from '../time'
 
 const styles = {
@@ -15,7 +15,7 @@ const styles = {
 export const TaskCard = ({ item: task, color }) => {
 
     const { mutate: updateTaskMutation } = useMutation(updateItem)
-    const { upsertItem } = useScheduleContext()
+    const { upsert: upsertItem } = useItems()
 
     const runToggleTaskCompleted = async () => {
         const updated = await updateTaskMutation(task._id, { completed: !task.completed })

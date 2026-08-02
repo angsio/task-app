@@ -2,7 +2,7 @@ import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { updateTheme } from '../../../api'
 import { useMutation } from '../../../hooks'
 import { ColorPicker, IconButton } from '../../../components'
-import { useScheduleContext } from '../ScheduleContext'
+import { useThemes } from '../../../data'
 
 const styles = {
     card:       'bg-crypt border-b border-border',
@@ -16,7 +16,7 @@ export const ThemeCard = ({ theme }) => {
 
     const { mutate: updateThemeMutation } = useMutation(updateTheme)
 
-    const { upsertTheme } = useScheduleContext()
+    const { upsert: upsertTheme } = useThemes()
 
     const runToggleThemeVisible = async () => {
         const updated = await updateThemeMutation(theme._id, { visible: !theme.visible })

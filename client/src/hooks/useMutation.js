@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNotifications } from '../notifications'
+import { announceChange } from '../sync'
 
 /*
   The generic WRITE. Runs only when you call mutate.
@@ -13,6 +14,9 @@ import { useNotifications } from '../notifications'
 
   Failures are caught here and pushed to the app-wide notification sink, so
   callers never try/catch and there is no `error` to display. Check for null.
+
+  A success also tells the other tabs to reload, from here rather than from each
+  handler, so a new write cannot forget to announce itself.
 */
 export const useMutation = (asyncFn) => {
     const [loading, setLoading] = useState(false)
@@ -22,7 +26,9 @@ export const useMutation = (asyncFn) => {
         setLoading(true)
 
         try {
-            return await asyncFn(...args)
+            const result = await asyncFn(...args)
+            announceChange()
+            return result
         }
         catch (err) {
             notify(err.message)
