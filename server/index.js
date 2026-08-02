@@ -6,9 +6,14 @@ import mongoose from 'mongoose'
 import { themesRouter, itemsRouter, agentRouter } from './routes/index.js'
 import { errorHandler } from './errors.js'
 import { requireUser } from './auth.js'
+import { agentLimiter, writeLimiter } from './rateLimits.js'
 
 const app = express()
 const PORT = process.env.PORT || 5001
+
+// nginx sits in front of this service, so the socket address is always the
+// proxy's. One hop, not `true`, so a caller cannot name their own address.
+app.set('trust proxy', 1)
 
 const ORIGINS = (process.env.ALLOWED_ORIGINS ?? '').split(',').map(o => o.trim()).filter(Boolean)
 
@@ -22,10 +27,11 @@ mongoose.connect(process.env.MONGODB_URI, { dbName: 'task-app' })
     .catch(err => console.error('Failed to connect:', err))
 
 // requireUser guards every API route, so no handler can forget it and no new
-// route is public by accident.
-app.use('/api/themes', requireUser, themesRouter)
-app.use('/api/items', requireUser, itemsRouter)
-app.use('/api/agent', requireUser, agentRouter)
+// route is public by accident. The limiters sit after it, so they can count
+// against the account rather than an address.
+app.use('/api/themes', requireUser, writeLimiter, themesRouter)
+app.use('/api/items', requireUser, writeLimiter, itemsRouter)
+app.use('/api/agent', requireUser, agentLimiter, agentRouter)
 
 // Last: every route's rejected promise lands here (Express 5 forwards them).
 app.use(errorHandler)
