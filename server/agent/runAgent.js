@@ -1,32 +1,23 @@
 import { chat } from './useBedrock.js'
 import { TOOLS, ENTRY_TOOL, toSpec } from './tools/index.js'
+import { safeZone, inZone, offsetIn } from './tools/utilities.js'
 
 const MAX_STEPS = 8
 
-// (date: Date) -> string, e.g. '-04:00'. The server runs in the user's
-// timezone, so this is their offset.
-const utcOffset = (date) => {
-    const minutes = -date.getTimezoneOffset()
-    const size = Math.abs(minutes)
-
-    return `${minutes < 0 ? '-' : '+'}${String(Math.floor(size / 60)).padStart(2, '0')}:${String(size % 60).padStart(2, '0')}`
-}
-
-// () -> string. Rebuilt every turn so "now" is never stale.
-const systemPrompt = () => {
+const systemPrompt = (timeZone) => {
     const now = new Date()
-    const offset = utcOffset(now)
-    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const offset = offsetIn(now, timeZone)
 
     return `You manage a user's schedule of tasks, events and reminders. Never use emojis.
 
-Right now it is ${now.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })} in ${zone} (UTC${offset}). Resolve "today", "tomorrow", "tonight" and "next week" against that.
+Right now it is ${inZone(now, timeZone)}, in the user's timezone (${timeZone}). Resolve "today", "tomorrow", "tonight" and "next week" against that.
 
 You cannot see the schedule and you remember nothing about it between messages. Call find_tools to obtain a tool, then call that tool. You may call find_tools as many times as you need, search again whenever the next step needs a capability you do not hold yet.
 
 GATHER BEFORE YOU ACT. If the request mentions anything already on the schedule, "after my meeting", "the same day as X", "when am I free", list the relevant items and read their real times BEFORE you create or change anything. Never guess a time, a title or a theme, and never state that something is on the schedule unless a tool told you so.
 
-TIMES. Tools report UTC, ending in Z. The user speaks in local wall-clock time, so write times with the local offset: 2 pm local is 2026-07-30T14:00:00${offset}. Never write a bare Z time for something the user described in words, and never copy a Z time from a tool into a time the user gave you.
+TIMES. Every time a tool reports is already in the user's own timezone and reads like "Jul 30, 2026, 5:00 PM EDT". SAY times back in that same style, always naming the zone, for example "8:00 PM EDT". Never answer with a UTC time, an ISO string or a bare number of hours.
+When you WRITE a time into a tool, use ISO carrying this offset: 2 pm for this user is 2026-07-30T14:00:00${offset}. Never write a time ending in Z.
 
 If the user is only chatting, just reply, do not call find_tools. Always finish answering everything the user asked, even after using a tool.`
 }
@@ -41,8 +32,8 @@ const STEP_LIMIT = `I stopped after ${MAX_STEPS} steps without finishing that. T
 // (messages: message[]) -> message[] with exactly one, current system message.
 // Replaced rather than preserved: the transcript round-trips through the client,
 // so a kept system message would pin "now" to whenever the chat started.
-const withSystem = (messages) => [
-    { role: 'system', content: systemPrompt() },
+const withSystem = (messages, timeZone) => [
+    { role: 'system', content: systemPrompt(timeZone) },
     ...messages.filter(message => message.role !== 'system'),
 ]
 
@@ -62,13 +53,13 @@ const awaitingApproval = (messages) => {
     return (last?.tool_calls ?? []).filter(call => needsApproval(call) && !answered.has(call.id))
 }
 
-// (call: toolCall, owner: string) -> Promise<{ reply, documents?, offer? }>
-// Every tool is handed the owner so it can only ever touch that user's data.
-const invoke = async (call, owner) => {
+// (call: toolCall, context: { owner, timeZone }) -> Promise<{ reply, documents?, offer? }>
+// owner scopes every tool to one user's data; timeZone is how it phrases times.
+const invoke = async (call, context) => {
     const tool = TOOLS[call.function.name]
     if (!tool) return { reply: { error: `Unknown tool: ${call.function.name}` } }
 
-    return tool.run(JSON.parse(call.function.arguments), { owner })
+    return tool.run(JSON.parse(call.function.arguments), context)
 }
 
 // (turn, call: toolCall, outcome: { reply, documents?, offer? }) -> void, mutates turn
@@ -82,13 +73,13 @@ const absorb = (turn, call, { reply, documents = [], offer = [] }) => {
 
 // (call: toolCall) -> { id, name, lines: string[] }
 // Described in text so the client needs no knowledge of the tool's arguments.
-const describe = (call) => {
+const describe = (call, timeZone) => {
     const args = JSON.parse(call.function.arguments)
 
     return {
         id: call.id,
         name: call.function.name,
-        lines: TOOLS[call.function.name]?.summarise?.(args) ?? [],
+        lines: TOOLS[call.function.name]?.summarise?.(args, { timeZone }) ?? [],
     }
 }
 
@@ -96,7 +87,7 @@ const describe = (call) => {
 const result = (turn, pending) => ({
     messages: turn.messages,
     documents: turn.documents,
-    pending: pending.map(describe),
+    pending: pending.map(call => describe(call, turn.timeZone)),
 })
 
 /*
@@ -106,6 +97,7 @@ const result = (turn, pending) => ({
                   session, so this is the entire state and it round-trips.
        approved   boolean, ONLY when answering a pending confirmation
        owner      string, the signed-in user's id; scopes every tool
+       timeZone   string, the browser's IANA zone; how every time is phrased
 
   Out: { messages, pending, documents }
        messages   message[], the transcript to send back next turn
@@ -116,16 +108,20 @@ const result = (turn, pending) => ({
   or asks for a capability. Whatever it finds is offered for the rest of the
   turn, and it may search again at any step.
 */
-export const runAgent = async ({ messages, approved, owner }) => {
+export const runAgent = async ({ messages, approved, owner, timeZone }) => {
+    const zone = safeZone(timeZone)
+
     const turn = {
-        messages: withSystem(messages),
+        messages: withSystem(messages, zone),
+        timeZone: zone,
+        context: { owner, timeZone: zone },
         offered: new Set([ENTRY_TOOL]),
         documents: [],
     }
 
     if (approved !== undefined) {
         for (const call of awaitingApproval(turn.messages)) {
-            absorb(turn, call, approved ? await invoke(call, owner) : { reply: DECLINED })
+            absorb(turn, call, approved ? await invoke(call, turn.context) : { reply: DECLINED })
         }
     }
 
@@ -137,7 +133,7 @@ export const runAgent = async ({ messages, approved, owner }) => {
         if (!calls.length) return result(turn, [])
 
         for (const call of calls.filter(call => !needsApproval(call))) {
-            absorb(turn, call, await invoke(call, owner))
+            absorb(turn, call, await invoke(call, turn.context))
         }
 
         const held = calls.filter(needsApproval)

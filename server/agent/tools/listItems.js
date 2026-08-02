@@ -1,13 +1,15 @@
 import { Item } from '../../models/index.js'
 
-import { findThemeId } from './utilities.js'
+import { findThemeId, inZone } from './utilities.js'
 
-const shapeItem = (item) => {
+// (item, timeZone: string) -> the shape the model reads, times already local
+const shapeItem = (item, timeZone) => {
     const base = { title: item.title, type: item.itemType, theme: item.theme?.name ?? null }
+    const at = (value) => inZone(value, timeZone)
 
-    if (item.itemType === 'Task') return { ...base, completed: item.completed, deadline: item.deadline }
-    if (item.itemType === 'Event') return { ...base, start: item.timeStart, end: item.timeEnd }
-    if (item.itemType === 'Reminder') return { ...base, at: item.reminderTime }
+    if (item.itemType === 'Task') return { ...base, completed: item.completed, deadline: at(item.deadline) }
+    if (item.itemType === 'Event') return { ...base, start: at(item.timeStart), end: at(item.timeEnd) }
+    if (item.itemType === 'Reminder') return { ...base, at: at(item.reminderTime) }
 
     return base
 }
@@ -30,7 +32,7 @@ export const listItems = {
         },
         required: []
     },
-    run: async ({ itemType, theme } = {}, { owner }) => {
+    run: async ({ itemType, theme } = {}, { owner, timeZone }) => {
         const filter = { owner }
         if (itemType) filter.itemType = itemType
 
@@ -42,6 +44,6 @@ export const listItems = {
 
         const items = await Item.find(filter).populate('theme', 'name').lean()
 
-        return { reply: items.map(shapeItem) }
+        return { reply: items.map(item => shapeItem(item, timeZone)) }
     },
 }

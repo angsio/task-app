@@ -8,11 +8,12 @@ import { createItems } from './createItems.js'
 
     name, description, parameters   the spec the model sees
     confirm                         the user must approve before it runs
-    summarise(args)                 plain lines describing a call awaiting
+    summarise(args, ctx)            plain lines describing a call awaiting
                                     approval, so the client renders text rather
                                     than reading this tool's argument shape
                                     (confirm tools only)
-    run(args, { owner })            does the work for that user, returns below
+    run(args, ctx)                  does the work, returns below.
+                                    ctx is { owner, timeZone }
 
   run answers { reply, documents?, offer? }:
     reply      the ONLY part the model reads back, keep it small, it costs tokens

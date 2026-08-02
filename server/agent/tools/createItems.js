@@ -1,20 +1,19 @@
 import { Task, Event, Reminder } from '../../models/index.js'
 
-import { findThemeId } from './utilities.js'
+import { findThemeId, inZone } from './utilities.js'
 
 const MODELS = { Task, Event, Reminder }
 
-// (value: string | Date) -> string, readable local date and time
-const stamp = (value) => new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+// (item, timeZone: string) -> string, when this item lands, phrased per itemType.
+// The user is approving a write, so the summary must show WHEN, in their own
+// clock. A title and a theme alone give them nothing to check against.
+const when = (item, timeZone) => {
+    const at = (value) => inZone(value, timeZone)
 
-// (item) -> string, when this item lands, phrased per itemType.
-// The user is approving a write, so the summary must show WHEN, a title and a
-// theme alone give them nothing to check the agent's arithmetic against.
-const when = (item) => {
-    if (item.itemType === 'Event') return `${stamp(item.timeStart)} to ${stamp(item.timeEnd)}`
-    if (item.itemType === 'Reminder') return stamp(item.reminderTime)
+    if (item.itemType === 'Event') return `${at(item.timeStart)} to ${at(item.timeEnd)}`
+    if (item.itemType === 'Reminder') return at(item.reminderTime)
 
-    return item.deadline ? `due ${stamp(item.deadline)}` : 'no deadline'
+    return item.deadline ? `due ${at(item.deadline)}` : 'no deadline'
 }
 
 export const createItems = {
@@ -46,7 +45,7 @@ export const createItems = {
         },
         required: ['items']
     },
-    summarise: ({ items }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${when(item)}`),
+    summarise: ({ items }, { timeZone }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${when(item, timeZone)}`),
     run: async ({ items } = {}, { owner }) => {
         const staged = []
 
