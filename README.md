@@ -38,6 +38,17 @@ returns a plain-language summary of what it is about to do, which the client
 renders as a yes or no. The summary is built by the tool itself, so the front end
 never has to know any tool's argument shape.
 
+A gate on its own is not enough, because the server keeps no session: the
+transcript round-trips through the client, so an approved turn that gets resent —
+a lost response and a retry, a reload, two tabs — arrives looking exactly like
+the first one, and the gate would reopen and write again. So a tool marked
+`once: true` claims the model's own id for that call in Mongo before doing
+anything, under a unique index on `(owner, callId)`. The insert is the lock:
+duplicates race, one wins, and the losers replay the winner's stored outcome
+rather than writing a second time. A write that throws is recorded as failed
+instead of released, since it may have landed partway — asking again produces a
+new call id and a fresh attempt, so nothing is stranded.
+
 Ownership is the other thing the loop cannot get wrong. Every tool is handed the
 signed-in account id from the session, and `owner` is stripped from request
 bodies before they reach the database, so an item cannot be filed under somebody

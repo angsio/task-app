@@ -3,17 +3,16 @@ import { Theme } from '../../models/index.js'
 const SERVER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 /*
-  (text: string) -> string, safe to drop inside a RegExp literal.
+  (text: string) -> string with every regex-special character turned into a
+  literal one, so the text matches itself when used as a pattern.
 
-  Theme names reach here from the model, which got them from whatever the user
-  typed. Unescaped, "Work (Q3)" becomes /^Work (Q3)$/ where the brackets are a
-  capture group, so the theme cannot be found by its own name, and "C++" throws
-  a SyntaxError that surfaces as a 500 mid-conversation.
+  Theme names arrive as the user typed them. Left alone, the brackets in
+  "Work (Q3)" would be read as regex syntax rather than as brackets.
 */
-const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const escapeRegexChars = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-// (name: string) -> RegExp matching exactly that name, ignoring case
-const exactly = (name) => new RegExp(`^${escapeRegex(name.trim())}$`, 'i')
+// (name: string) -> RegExp matching that whole name and nothing else, any case
+const exactNameRegex = (name) => new RegExp(`^${escapeRegexChars(name.trim())}$`, 'i')
 
 /*
   Resolve many theme names at once.
@@ -32,7 +31,7 @@ export const findThemeIds = async (names, owner) => {
 
     const themes = await Theme.find({
         owner,
-        name: { $in: wanted.map(exactly) },
+        name: { $in: wanted.map(exactNameRegex) },
     }).select('name').lean()
 
     return new Map(themes.map(theme => [theme.name.toLowerCase(), theme._id]))
@@ -41,7 +40,7 @@ export const findThemeIds = async (names, owner) => {
 // (name: string, owner: string) -> Promise<ObjectId | null>
 // Scoped to the owner, so a theme name only ever resolves within their board.
 export const findThemeId = async (name, owner) => {
-    const theme = await Theme.findOne({ name: exactly(name), owner }).lean()
+    const theme = await Theme.findOne({ name: exactNameRegex(name), owner }).lean()
     return theme?._id ?? null
 }
 
@@ -52,7 +51,7 @@ export const findThemeId = async (name, owner) => {
   missing or not a real one. It is user input on its way into Intl, which throws
   on anything it does not recognise.
 */
-export const safeZone = (zone) => {
+export const resolveTimeZone = (zone) => {
     if (!zone) return SERVER_ZONE
 
     try {
@@ -70,7 +69,7 @@ export const safeZone = (zone) => {
   Every time the model is shown goes through here, so it reads back the user's
   own wall-clock time with the zone named, rather than a UTC stamp.
 */
-export const inZone = (value, timeZone) => {
+export const formatInZone = (value, timeZone) => {
     if (!value) return null
 
     return new Date(value).toLocaleString('en-US', {
@@ -87,7 +86,7 @@ export const inZone = (value, timeZone) => {
 // (date: Date, timeZone: string) -> string like "-04:00"
 // The offset the model writes into an ISO time, so what it saves lands in the
 // user's zone rather than the server's.
-export const offsetIn = (date, timeZone) => {
+export const utcOffsetIn = (date, timeZone) => {
     const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' }).formatToParts(date)
     const name = parts.find(part => part.type === 'timeZoneName')?.value ?? 'GMT'
 

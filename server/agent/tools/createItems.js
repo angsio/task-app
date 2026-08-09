@@ -1,24 +1,25 @@
 import { Task, Event, Reminder } from '../../models/index.js'
 
-import { findThemeIds, inZone } from './utilities.js'
+import { findThemeIds, formatInZone } from './utilities.js'
 
 const MODELS = { Task, Event, Reminder }
 
-// (item, timeZone: string) -> string, when this item lands, phrased per itemType.
-// The user is approving a write, so the summary must show WHEN, in their own
-// clock. A title and a theme alone give them nothing to check against.
-const when = (item, timeZone) => {
-    const at = (value) => inZone(value, timeZone)
+// (item, timeZone: string) -> string, the item's timing in words, phrased per
+// itemType, for the confirmation the user reads before approving the write.
+const timingText = (item, timeZone) => {
+    if (item.itemType === 'Event') {
+        return `${formatInZone(item.timeStart, timeZone)} to ${formatInZone(item.timeEnd, timeZone)}`
+    }
 
-    if (item.itemType === 'Event') return `${at(item.timeStart)} to ${at(item.timeEnd)}`
-    if (item.itemType === 'Reminder') return at(item.reminderTime)
+    if (item.itemType === 'Reminder') return formatInZone(item.reminderTime, timeZone)
 
-    return item.deadline ? `due ${at(item.deadline)}` : 'no deadline'
+    return item.deadline ? `due ${formatInZone(item.deadline, timeZone)}` : 'no deadline'
 }
 
 export const createItems = {
     name: 'create_items',
     confirm: true,
+    once: true,
     description: 'Add one or more new items to the user\'s schedule, tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Several items can be created in one call.',
     parameters: {
         type: 'object',
@@ -45,7 +46,7 @@ export const createItems = {
         },
         required: ['items']
     },
-    summarise: ({ items }, { timeZone }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${when(item, timeZone)}`),
+    summarise: ({ items }, { timeZone }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${timingText(item, timeZone)}`),
     run: async ({ items } = {}, { owner }) => {
         const staged = []
 

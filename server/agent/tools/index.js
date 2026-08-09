@@ -8,6 +8,11 @@ import { createItems } from './createItems.js'
 
     name, description, parameters   the spec the model sees
     confirm                         the user must approve before it runs
+    once                            this call must never execute twice; the
+                                    ledger records its id and replays the first
+                                    outcome to any repeat. `confirm` implies it,
+                                    so set this only on a write that does not
+                                    ask for approval
     summarise(args, ctx)            plain lines describing a call awaiting
                                     approval, so the client renders text rather
                                     than reading this tool's argument shape
@@ -28,14 +33,12 @@ export const RETRIEVABLE = {
     [createItems.name]: createItems,
 }
 
-// Everything the loop can dispatch, including the tool that finds the others.
 export const TOOLS = { [findTools.name]: findTools, ...RETRIEVABLE }
 
-// The one tool the model always holds; every other is earned through it.
 export const ENTRY_TOOL = findTools.name
 
 // (tool) -> the OpenAI-style function spec the model is shown
-export const toSpec = (tool) => ({
+export const toModelSpec = (tool) => ({
     type: 'function',
     function: {
         name: tool.name,

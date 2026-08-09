@@ -9,15 +9,10 @@ import { announceChange } from '../sync'
                 this hook serves create, update and delete alike.
 
   Out: { mutate, loading }
-       mutate   (...args) -> Promise<result | null>. null means it failed.
-       loading  boolean, true while in flight
-
-  Failures are caught here and pushed to the app-wide notification sink, so
-  callers never try/catch and there is no `error` to display. Check for null.
-
-  A success also tells the other tabs to reload, from here rather than from each
-  handler, so a new write cannot forget to announce itself.
+       mutate   (...args) -> Promise<result | null>. null is failed.
+       loading  boolean
 */
+
 export const useMutation = (asyncFn) => {
     const [loading, setLoading] = useState(false)
     const { notify } = useNotifications()

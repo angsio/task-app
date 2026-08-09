@@ -18,7 +18,6 @@ export const matchTools = async (embedding, count = 3) => {
 }
 
 // (name: string, description: string, embedding: number[]) -> Promise<void>
-// Writes one row of the retrieval index; re-run after editing a description.
 export const upsertTool = async (name, description, embedding) => {
     const { error } = await supabase
         .from('tool_embeddings')

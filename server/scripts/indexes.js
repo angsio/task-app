@@ -2,10 +2,11 @@ import 'dotenv/config'
 import mongoose from 'mongoose'
 
 import { Item, Theme } from '../models/index.js'
+import { ToolCall } from '../agent/ledger.js'
 
 /*
-  Prints the indexes on items and themes, and with --drop removes the ones the
-  schemas no longer declare.
+  Prints the indexes on items, themes and toolcalls, and with --drop removes the
+  ones the schemas no longer declare.
 
     node scripts/indexes.js          just look
     node scripts/indexes.js --drop   look, then remove
@@ -38,9 +39,11 @@ await mongoose.connect(process.env.MONGODB_URI, { dbName: 'task-app' })
 // before anything they replaced is removed.
 await Item.createIndexes()
 await Theme.createIndexes()
+await ToolCall.createIndexes()
 
 console.log('items: ', await namesOn(Item))
 console.log('themes:', await namesOn(Theme))
+console.log('toolcalls:', await namesOn(ToolCall))
 
 if (process.argv.includes('--drop')) {
     await drop(Item, 'owner_1')

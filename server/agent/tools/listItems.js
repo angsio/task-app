@@ -1,15 +1,15 @@
 import { Item } from '../../models/index.js'
 
-import { findThemeId, inZone } from './utilities.js'
+import { findThemeId, formatInZone } from './utilities.js'
 
 // (item, timeZone: string) -> the shape the model reads, times already local
-const shapeItem = (item, timeZone) => {
+const shapeForModel = (item, timeZone) => {
     const base = { title: item.title, type: item.itemType, theme: item.theme?.name ?? null }
-    const at = (value) => inZone(value, timeZone)
+    const local = (value) => formatInZone(value, timeZone)
 
-    if (item.itemType === 'Task') return { ...base, completed: item.completed, deadline: at(item.deadline) }
-    if (item.itemType === 'Event') return { ...base, start: at(item.timeStart), end: at(item.timeEnd) }
-    if (item.itemType === 'Reminder') return { ...base, at: at(item.reminderTime) }
+    if (item.itemType === 'Task') return { ...base, completed: item.completed, deadline: local(item.deadline) }
+    if (item.itemType === 'Event') return { ...base, start: local(item.timeStart), end: local(item.timeEnd) }
+    if (item.itemType === 'Reminder') return { ...base, at: local(item.reminderTime) }
 
     return base
 }
@@ -44,6 +44,6 @@ export const listItems = {
 
         const items = await Item.find(filter).populate('theme', 'name').lean()
 
-        return { reply: items.map(item => shapeItem(item, timeZone)) }
+        return { reply: items.map(item => shapeForModel(item, timeZone)) }
     },
 }
