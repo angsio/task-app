@@ -1,4 +1,4 @@
-import { findItems, findThemeIds, namedAs, changesText } from './utilities.js'
+import { findItems, findThemeIds, namedAs, changesText, timingProblem } from './utilities.js'
 
 // (changes: object) -> the same fields without the ones no update may touch.
 // Ownership comes from the session, never the model, or a call could hand an
@@ -14,7 +14,7 @@ export const updateItems = {
     name: 'update_items',
     confirm: true,
     once: true,
-    description: 'Change tasks, events or reminders that are already on the user\'s schedule. Call this to move, reschedule, rename, retime or postpone something, to mark a task done, or to file an item under a different theme. Name each item by the title it is saved under, and give its type or its theme as well when more than one item could share that title. An item cannot change kind: to turn a task into an event, delete it and create the event. Several items can be changed in one call.',
+    description: 'Change tasks, events or reminders that are already on the user’s schedule. Call this to reschedule, retime, postpone or rename one, to mark a task done, or to move an item out of one theme and refile it under another. Name each item by the title it is saved under, and give its type or its theme as well when more than one item could share that title. An item cannot change kind: to turn a task into an event, delete it and create the event. Several items can be changed in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -25,7 +25,8 @@ export const updateItems = {
                 items: {
                     type: 'object',
                     properties: {
-                        title: { type: 'string', description: 'The title of the item as it is saved now, used to find it.' },
+                        title: { type: 'string', description: 'The title of the item as it is saved now, used to find it and to describe the change to the user.' },
+                        id: { type: 'string', description: 'Optional. The item\'s id from list_items. Give this when several items share a title, such as a meeting repeated on four days; it settles which one outright. To change all of them, send one entry per id.' },
                         itemType: { type: 'string', enum: ['Task', 'Event', 'Reminder'], description: 'Optional. The kind of item, when the title alone could match more than one.' },
                         theme: { type: 'string', description: 'Optional. The name of the theme the item is under now, when the title alone could match more than one.' },
                         changes: {
@@ -49,16 +50,15 @@ export const updateItems = {
         },
         required: ['items']
     },
+    check: ({ items }) => items.map((item, index) => timingProblem(item.changes ?? {}, `items[${index}].changes`)).find(Boolean) ?? null,
     summarise: ({ items }, { timeZone }) => items.map(item => `Change ${namedAs(item)}: ${changesText(item.changes, timeZone)}`),
     run: async ({ items } = {}, ctx) => {
         const staged = []
 
         // Every item named in the batch, and every theme they are being moved
-        // to, resolved together rather than one lookup per item.
-        const [found, themeIds] = await Promise.all([
-            findItems(items, ctx),
-            findThemeIds(items.map(item => item.changes?.theme), ctx),
-        ])
+        // to, each resolved in one lookup rather than one per item.
+        const found = await findItems(items, ctx)
+        const themeIds = await findThemeIds(items.map(item => item.changes?.theme), ctx)
 
         for (const [index, item] of items.entries()) {
             if (found[index].error) return { reply: { error: found[index].error } }
@@ -88,7 +88,7 @@ export const updateItems = {
             staged.push(doc)
         }
 
-        await Promise.all(staged.map(doc => doc.save({ session: ctx.session })))
+        for (const doc of staged) await doc.save({ session: ctx.session })
 
         return {
             reply: {

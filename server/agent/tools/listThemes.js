@@ -2,7 +2,7 @@ import { Theme } from '../../models/index.js'
 
 export const listThemes = {
     name: 'list_themes',
-    description: 'List the themes on the user\'s schedule. Themes are the categories that items (tasks, events and reminders) are grouped under, such as "Work" or "Personal". Call this when the user asks which themes or categories exist, or to check that a theme really exists before putting an item in it.',
+    description: 'List the themes on the user’s board. Themes are the categories things get grouped under, such as "Work" or "Personal". Call this when the user asks which themes, categories or groups they have, and ALSO to look up whether a particular category already exists before filing anything under it. This only reads them.',
     parameters: {
         type: 'object',
         properties: {}

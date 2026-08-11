@@ -17,12 +17,20 @@ import { deleteThemes } from './deleteThemes.js'
                                     ledger records its id and replays the first
                                     outcome to any repeat. `confirm` routes
                                     through the ledger too
+    check(args)                     optional. A problem string for anything the
+                                    parameters cannot state, such as a field
+                                    required only for one itemType, or null
     summarise(args, ctx)            plain lines describing a call awaiting
                                     approval, so the client renders text rather
                                     than reading this tool's argument shape
                                     (confirm tools only)
     run(args, ctx)                  does the work, returns below.
-                                    ctx is { owner, timeZone }
+                                    ctx is { owner, timeZone, session }. Every
+                                    query and save takes the session, and no two
+                                    may be in flight at once: an approved batch
+                                    runs in a transaction, and one session
+                                    cannot carry concurrent operations. Await
+                                    each in turn, never Promise.all
 
   run answers { reply, documents?, removed?, offer? }:
     reply      the ONLY part the model reads back, keep it small, it costs tokens
@@ -133,7 +141,8 @@ export const argumentsOf = (call) => {
         return { error: 'the arguments were not valid JSON' }
     }
 
-    const wrong = misfit(TOOLS[call.function.name]?.parameters ?? {}, args, 'arguments')
+    const tool = TOOLS[call.function.name]
+    const wrong = misfit(tool?.parameters ?? {}, args, 'arguments') ?? tool?.check?.(args) ?? null
 
     return wrong ? { error: wrong, args } : { args }
 }

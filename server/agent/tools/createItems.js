@@ -1,6 +1,6 @@
 import { Task, Event, Reminder } from '../../models/index.js'
 
-import { findThemeIds, formatInZone } from './utilities.js'
+import { findThemeIds, formatInZone, timingProblem } from './utilities.js'
 
 const MODELS = { Task, Event, Reminder }
 
@@ -20,7 +20,7 @@ export const createItems = {
     name: 'create_items',
     confirm: true,
     once: true,
-    description: 'Add one or more new items to the user\'s schedule, tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Every item goes in a theme that already exists; if the theme is new, create it first with the theme tool and wait for that to finish. Several items can be created in one call.',
+    description: 'Add one or more new items to the user’s schedule, tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Every item needs a theme that already exists. Several items can be created in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -46,6 +46,7 @@ export const createItems = {
         },
         required: ['items']
     },
+    check: ({ items }) => items.map((item, index) => timingProblem(item, `items[${index}]`)).find(Boolean) ?? null,
     summarise: ({ items }, { timeZone }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${timingText(item, timeZone)}`),
     run: async ({ items } = {}, ctx) => {
         const staged = []
@@ -70,7 +71,7 @@ export const createItems = {
             staged.push({ doc, theme: item.theme })
         }
 
-        await Promise.all(staged.map(({ doc }) => doc.save({ session: ctx.session })))
+        for (const { doc } of staged) await doc.save({ session: ctx.session })
 
         return {
             reply: {

@@ -8,6 +8,21 @@ import { emit, newRunId, hashOwner, causeOf, bytesOf, modelMetrics, estimateToke
 
 const MAX_STEPS = 8
 
+// How many times an approved batch is retried after Mongo asks for one.
+const TRANSIENT_ATTEMPTS = 2
+
+/*
+  (error) -> boolean, true when Mongo says the transaction can simply be run
+  again: write contention, or a collection appearing underneath it.
+
+  The batch aborts and the ledger forgets it before a retry, so nothing was
+  written and nothing is replayed. This is the one case worth repeating rather
+  than handing the browser a 500.
+*/
+const isTransient = (error) => (typeof error?.hasErrorLabel === 'function'
+    ? error.hasErrorLabel('TransientTransactionError')
+    : Boolean(error?.errorLabels?.includes('TransientTransactionError')))
+
 // (timeZone) -> string, the instructions sent at the top of every turn.
 const systemPrompt = (timeZone) => {
     const now = new Date()
@@ -15,16 +30,20 @@ const systemPrompt = (timeZone) => {
 
     return `You manage a user's schedule of tasks, events and reminders. Never use emojis.
 
-Right now it is ${formatInZone(now, timeZone)}, in the user's timezone (${timeZone}). Resolve "today", "tomorrow", "tonight" and "next week" against that.
+Right now it is ${formatInZone(now, timeZone)}, in the user's timezone (${timeZone}). That is the real weekday, so trust it over any assumption. Resolve "today", "tomorrow", "tonight", "next week", "this Friday" and "every weekday" against it, and count forward from that weekday rather than guessing one from the date.
 
 You cannot see the schedule and you remember nothing about it between messages. Call find_tools to obtain a tool, then call that tool. You may call find_tools as many times as you need, search again whenever the next step needs a capability you do not hold yet.
 
+A tool that comes back from find_tools may only partly fit. Read what it actually does before you use it, and never report something adjacent as if it were the thing that was asked. Before you tell the user you cannot do something, search for that exact thing in its own words, "delete an event", "export the schedule". One search that came back with the wrong tools is not evidence that the right tool does not exist.
+
 GATHER BEFORE YOU ACT. If the request mentions anything already on the schedule, "after my meeting", "the same day as X", "when am I free", list the relevant items and read their real times BEFORE you create or change anything. Never guess a time, a title or a theme, and never state that something is on the schedule unless a tool told you so.
 
-THEMES COME FIRST. Every task, event and reminder lives in a theme, and that theme has to already exist before an item can be created in it or moved into it. Never assume a theme exists because the user named it: list the themes and look. If the one you need is not there, create the theme, wait for it to come back, and only then create the items. Creating a theme and the items that go in it are two separate turns, never one.
+THEMES COME FIRST, BUT ONLY WHEN CREATING OR MOVING. Every task, event and reminder lives in a theme. Before you create an item, or move one into a theme, that theme has to already exist: list the themes and look, and never assume one exists because the user named it. If the one you need is not there, create the theme, wait for it to come back, and only then create the items. Creating a theme and the items that go in it are two separate turns, never one. None of this applies when you are reading, retiming, renaming or deleting: go straight to the tool for that.
 
-TIMES. Every time a tool reports is already in the user's own timezone and reads like "Jul 30, 2026, 5:00 PM EDT". SAY times back in that same style, always naming the zone, for example "8:00 PM EDT". Never answer with a UTC time, an ISO string or a bare number of hours.
+TIMES. Every time a tool reports is already in the user's own timezone and reads like "Thu, Jul 30, 2026, 5:00 PM EDT", weekday included. SAY times back in that same style, always naming the zone, for example "Thursday at 8:00 PM EDT". Never answer with a UTC time, an ISO string or a bare number of hours.
 When you WRITE a time into a tool, use ISO carrying this offset: 2 pm for this user is 2026-07-30T14:00:00${offset}. Never write a time ending in Z.
+
+THE APP CONFIRMS WRITES, NOT YOU. Creating, changing and deleting all stop and show the user exactly what is about to happen, and they approve or cancel it there. So never ask "shall I go ahead?" in your reply: call the tool and let that confirmation do the asking. Ask first only when you genuinely do not know which items were meant, and then ask about that, not about permission.
 
 If the user is only chatting, just reply, do not call find_tools. Always finish answering everything the user asked, even after using a tool.`
 }
@@ -62,20 +81,37 @@ const awaitingApproval = (messages) => {
 }
 
 /*
-  (turn, calls) -> boolean, true when every call fits its tool's declared spec.
+  (turn, calls, step) -> boolean, true when every call fits its tool's spec.
 
   All or nothing: if one call is malformed, every call in the reply is answered
   and none of them run or are shown, so the model re-sends the whole set. This
   is the only thing checking the model's arguments, and it runs before anything
   reaches summarise, which would otherwise show the user "undefined in undefined".
+
+  A rejected call never reaches runToolCall, so it records its own tool.call
+  here. It stays out of turn.called, which is the path that actually ran.
 */
-const validated = (turn, calls) => {
+const validated = (turn, calls, step) => {
     const problems = calls.map(call => argumentsOf(call).error)
     if (!problems.some(Boolean)) return true
 
-    calls.forEach((call, index) => applyOutcome(turn, call, {
-        reply: problems[index] ? rejection(problems[index]) : SET_REJECTED_REPLY,
-    }))
+    calls.forEach((call, index) => {
+        const reply = problems[index] ? rejection(problems[index]) : SET_REJECTED_REPLY
+
+        emit('tool.call', {
+            ...turn.trace,
+            step,
+            tool: call.function.name,
+            ms: 0,
+            ok: false,
+            error: problems[index] ? 'invalid_arguments' : 'set_rejected',
+            gated: needsApproval(call),
+            replyBytes: bytesOf(reply),
+            ...(LOG_CONTENT ? { arguments: call.function.arguments } : {}),
+        })
+
+        applyOutcome(turn, call, { reply })
+    })
 
     return false
 }
@@ -98,8 +134,8 @@ const retrievalFields = (name, args, outcome) => {
 }
 
 /*
-  (call, turn, step) -> Promise<{ reply, documents?, removed?, offer? }>, runs
-  one tool call.
+  (call, turn, step, ctx) -> Promise<{ reply, documents?, removed?, offer? }>,
+  runs one tool call.
 
   Anything gated, plus anything marked `once`, goes through the ledger, so a
   resent call runs only the first time.
@@ -138,13 +174,15 @@ const runToolCall = async (call, turn, step, ctx) => {
         return outcome
     }
 
-    const { args, error: malformed } = argumentsOf(call)
+    // Already checked against the tool's spec by validated(), on both the way in
+    // and the way back from a confirmation. This only has to read them.
+    let args
+    try {
+        args = JSON.parse(call.function.arguments)
+    } catch (error) {
+        record(null, null, causeOf(error))
 
-    if (malformed) {
-        const outcome = { reply: rejection(malformed) }
-        record(args, outcome, 'invalid_arguments')
-
-        return outcome
+        throw error
     }
 
     try {
@@ -173,7 +211,7 @@ const callModel = async (turn, step) => {
     const started = Date.now()
 
     try {
-        const { message, usage, model } = await chat(turn.messages, specs)
+        const { message, usage, model, finish } = await chat(turn.messages, specs)
         const ms = Date.now() - started
         const metrics = modelMetrics(usage, turn.messages, message, model)
 
@@ -191,6 +229,7 @@ const callModel = async (turn, step) => {
             toolsOffered: specs.length,
             toolCalls: (message.tool_calls ?? []).length,
             finish: message.tool_calls?.length ? 'tools' : 'text',
+            stopReason: finish,
             ok: true,
             error: null,
             ...metrics,
@@ -288,13 +327,6 @@ const applyOutcome = (turn, call, { reply, documents = [], removed = [], offer =
     offer.filter(name => TOOLS[name]).forEach(name => turn.offered.add(name))
 }
 
-// (outcome) -> what a call reports once its batch was rolled back. Whatever
-// failed keeps its own error; the rest are told nothing of theirs was written,
-// and the documents they returned are dropped, because nothing was.
-const rolledBack = (outcome) => ({
-    reply: outcome?.reply?.error ? outcome.reply : NOTHING_HAPPENED_REPLY,
-})
-
 /*
   Run a batch of calls.
 
@@ -307,51 +339,67 @@ const rolledBack = (outcome) => ({
        results are recorded in the order the model asked for, so the transcript
        lines up with the reply that produced it.
 */
-const runBatch = async (turn, calls, step, atomic = false) => {
+export const runBatch = async (turn, calls, step, atomic = false) => {
     if (!calls.length) return
 
-    const session = atomic ? await mongoose.startSession() : null
-    const ctx = { ...turn.context, session }
-    const outcomes = new Map()
-    let failed = false
+    for (let attempt = 0; ; attempt += 1) {
+        const session = atomic ? await mongoose.startSession() : null
+        const ctx = { ...turn.context, session }
+        const outcomes = new Map()
+        let failed = false
+        let again = false
 
-    try {
-        session?.startTransaction()
+        try {
+            session?.startTransaction()
 
-        for (const call of inRunOrder(calls)) {
-            if (failed) {
-                outcomes.set(call.id, { reply: NOTHING_HAPPENED_REPLY })
-                continue
+            for (const call of inRunOrder(calls)) {
+                if (failed) {
+                    outcomes.set(call.id, { reply: NOTHING_HAPPENED_REPLY })
+                    continue
+                }
+
+                const outcome = await runToolCall(call, turn, step, ctx)
+                outcomes.set(call.id, outcome)
+
+                failed = atomic && Boolean(outcome.reply?.error)
             }
 
-            const outcome = await runToolCall(call, turn, step, ctx)
-            outcomes.set(call.id, outcome)
+            if (session && failed) {
+                await session.abortTransaction()
+                await forget(calls.map(call => call.id), turn.context.owner)
 
-            failed = atomic && Boolean(outcome.reply?.error)
+                // Whatever failed keeps its own error. The rest are told nothing
+                // of theirs was written, and their documents go with it.
+                calls.forEach(call => {
+                    const { reply } = outcomes.get(call.id)
+
+                    outcomes.set(call.id, { reply: reply?.error ? reply : NOTHING_HAPPENED_REPLY })
+                })
+            } else if (session) {
+                await session.commitTransaction()
+            }
+        } catch (error) {
+            // Nothing was written, so the ledger has to forget these calls:
+            // otherwise a retry, here or from the browser, replays the failure
+            // instead of doing the work.
+            if (session?.inTransaction()) {
+                await session.abortTransaction().catch(() => {})
+                await forget(calls.map(call => call.id), turn.context.owner).catch(() => {})
+            }
+
+            if (!atomic || attempt >= TRANSIENT_ATTEMPTS || !isTransient(error)) throw error
+
+            again = true
+        } finally {
+            await session?.endSession()
         }
 
-        if (session && failed) {
-            await session.abortTransaction()
-            await forget(calls.map(call => call.id), turn.context.owner)
+        if (again) continue
 
-            calls.forEach(call => outcomes.set(call.id, rolledBack(outcomes.get(call.id))))
-        } else if (session) {
-            await session.commitTransaction()
-        }
-    } catch (error) {
-        // A tool that threw rather than reporting an error still wrote nothing,
-        // so the ledger has to forget it or a resend would replay the failure.
-        if (session?.inTransaction()) {
-            await session.abortTransaction().catch(() => {})
-            await forget(calls.map(call => call.id), turn.context.owner).catch(() => {})
-        }
+        for (const call of calls) applyOutcome(turn, call, outcomes.get(call.id))
 
-        throw error
-    } finally {
-        await session?.endSession()
+        return
     }
-
-    for (const call of calls) applyOutcome(turn, call, outcomes.get(call.id))
 }
 
 /*
@@ -422,10 +470,9 @@ export const runAgent = async ({ messages, approved, owner, timeZone }) => {
                 })
             }
 
-            // Approved as one set, so the first failure stops the rest rather
-            // than leaving half of them applied.
-            if (approved) await runBatch(turn, pending, -1, true)
-            else pending.forEach(call => applyOutcome(turn, call, { reply: DECLINED_REPLY }))
+            // Approved as one set: all of them fit and run, or none of them do.
+            if (!approved) pending.forEach(call => applyOutcome(turn, call, { reply: DECLINED_REPLY }))
+            else if (validated(turn, pending, -1)) await runBatch(turn, pending, -1, true)
         }
 
         for (let step = 0; step < MAX_STEPS; step++) {
@@ -439,7 +486,7 @@ export const runAgent = async ({ messages, approved, owner, timeZone }) => {
 
             // All of them have to fit their tools or none of them run. The model
             // is told what was wrong and tries again, without the user seeing it.
-            if (!validated(turn, calls)) continue
+            if (!validated(turn, calls, step)) continue
 
             await runBatch(turn, calls.filter(call => !needsApproval(call)), step)
 

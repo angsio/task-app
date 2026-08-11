@@ -6,7 +6,7 @@ export const deleteThemes = {
     name: 'delete_themes',
     confirm: true,
     once: true,
-    description: 'Delete one or more themes from the user\'s board, together with every task, event and reminder filed under them. Themes are the categories items are grouped under, such as "Work" or "Personal". Call this only when the user wants a whole category and everything in it gone. This cannot be undone, so first list the items in that theme and tell the user how many will go with it. To remove single items and leave the category standing, use the tool that deletes items instead.',
+    description: 'Delete one or more whole themes from the user’s board, together with everything filed under them. Call this only when the user wants an entire category and all of its contents gone. This cannot be undone, so first list what is in that category and tell the user how many will go with it.',
     parameters: {
         type: 'object',
         properties: {
@@ -39,10 +39,8 @@ export const deleteThemes = {
         // to lose from its cache.
         const orphaned = await Item.find({ owner: ctx.owner, theme: { $in: themeIds } }).session(ctx.session).lean()
 
-        await Promise.all([
-            Theme.deleteMany({ owner: ctx.owner, _id: { $in: themeIds } }, { session: ctx.session }),
-            Item.deleteMany({ owner: ctx.owner, theme: { $in: themeIds } }, { session: ctx.session }),
-        ])
+        await Theme.deleteMany({ owner: ctx.owner, _id: { $in: themeIds } }, { session: ctx.session })
+        await Item.deleteMany({ owner: ctx.owner, theme: { $in: themeIds } }, { session: ctx.session })
 
         return {
             reply: {

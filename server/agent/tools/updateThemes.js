@@ -14,7 +14,7 @@ export const updateThemes = {
     name: 'update_themes',
     confirm: true,
     once: true,
-    description: 'Change themes that already exist on the user\'s board. Call this to rename a theme, to recolour it, or to hide it from the board and show it again. Themes are the categories that tasks, events and reminders are grouped under, such as "Work" or "Personal". This changes the category itself, never the items inside it: to retime, rename or move an item, use the tool that updates items. Several themes can be changed in one call.',
+    description: 'Rename a theme, recolour it, or hide and unhide it on the board. Call this when the name, the colour or the visibility of a category is what changes. Several can be changed in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -84,7 +84,7 @@ export const updateThemes = {
             staged.push(doc)
         }
 
-        await Promise.all(staged.map(doc => doc.save({ session: ctx.session })))
+        for (const doc of staged) await doc.save({ session: ctx.session })
 
         return {
             reply: {

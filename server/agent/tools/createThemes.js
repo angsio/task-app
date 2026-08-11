@@ -10,7 +10,7 @@ export const createThemes = {
     name: 'create_themes',
     confirm: true,
     once: true,
-    description: 'Create one or more new themes on the user\'s board. Themes are the categories that tasks, events and reminders are grouped under, such as "Work" or "Personal". Call this when the user asks for a new category or group to file things under, or when something they want scheduled belongs under a theme that does not exist yet. This creates the category only, never the items inside it. Several themes can be created in one call.',
+    description: 'Make one or more new themes on the user’s board. Themes are the categories things get grouped under, such as "Work" or "Personal". Call this when the user wants a new category or group that does not exist yet, or when something they want scheduled belongs under one that has never been made. Several can be made in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -54,7 +54,7 @@ export const createThemes = {
             staged.push(doc)
         }
 
-        await Promise.all(staged.map(doc => doc.save({ session: ctx.session })))
+        for (const doc of staged) await doc.save({ session: ctx.session })
 
         return {
             reply: {

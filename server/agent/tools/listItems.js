@@ -2,9 +2,11 @@ import { Item } from '../../models/index.js'
 
 import { findThemeId, formatInZone } from './utilities.js'
 
-// (item, timeZone: string) -> the shape the model reads, times already local
+// (item, timeZone: string) -> the shape the model reads, times already local.
+// The id is here because titles repeat: a daily standup is four items with one
+// name, and nothing else tells them apart.
 const shapeForModel = (item, timeZone) => {
-    const base = { title: item.title, type: item.itemType, theme: item.theme?.name ?? null }
+    const base = { id: item._id, title: item.title, type: item.itemType, theme: item.theme?.name ?? null }
     const local = (value) => formatInZone(value, timeZone)
 
     if (item.itemType === 'Task') return { ...base, completed: item.completed, deadline: local(item.deadline) }
@@ -43,7 +45,7 @@ export const listItems = {
             filter.theme = themeId
         }
 
-        const items = await Item.find(filter).populate('theme', 'name').lean()
+        const items = await Item.find(filter).session(ctx.session).populate('theme', 'name').lean()
 
         return { reply: items.map(item => shapeForModel(item, timeZone)) }
     },

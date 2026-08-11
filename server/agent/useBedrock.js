@@ -4,7 +4,35 @@ const TOKEN = process.env.AWS_MODELS_TOKEN
 const CHAT_URL = process.env.CHAT_URL
 const EMBED_URL = process.env.EMBED_URL
 
-const stripReasoning = (content) => (content ?? '').replace(/<reasoning>[\s\S]*?<\/reasoning>/g, '').trim()
+// How much the model deliberates before answering. Explicit rather than left to
+// the gateway: high spends roughly three times the output tokens on a scheduling
+// turn for no better tool choice, and every extra line of it is a line that can
+// degenerate or leak.
+const REASONING_EFFORT = 'medium'
+
+const LOST_REPLY = 'I lost my train of thought there. Ask me again and I will pick it up.'
+
+/*
+  (content) -> the answer, with the model's reasoning taken out.
+
+  gpt-oss writes its reasoning into the content itself, wrapped in <reasoning>
+  tags. A generation that degenerates or is cut short loses one of the two tags,
+  and then matching only on complete pairs strips nothing and the whole thing
+  reaches the transcript and the user. So each half is handled alone: text before
+  a stray closing tag lost its opening one, and text after a stray opening tag
+  never closed.
+*/
+const stripReasoning = (content) => {
+    let text = (content ?? '').replace(/<reasoning>[\s\S]*?<\/reasoning>/g, '')
+
+    const close = text.lastIndexOf('</reasoning>')
+    if (close !== -1) text = text.slice(close + '</reasoning>'.length)
+
+    const open = text.indexOf('<reasoning>')
+    if (open !== -1) text = text.slice(0, open)
+
+    return text.trim()
+}
 
 // (subject, status?) -> ApiError, the model could not be reached or refused.
 // `upstreamStatus` carries what it said, when it said anything.
@@ -66,24 +94,32 @@ const post = async (url, body, subject) => {
   In:  messages  message[], the transcript
        tools     spec[], the functions the model may call this call
 
-  Out: Promise<{ message, usage, model }>
+  Out: Promise<{ message, usage, model, finish }>
        message  the assistant's reply, possibly carrying tool_calls, reasoning
-                tags stripped. The only part that joins the transcript
+                stripped. The only part that joins the transcript
        usage    the provider's token counts, undefined if it sent none
        model    the model id the provider named, or null
+       finish   why the model stopped. 'length' means it was cut off, which is
+                what leaves reasoning unclosed and answers half written
 
   Throws ApiError(502).
 */
 export const chat = async (messages, tools) => {
-    const data = await post(CHAT_URL, { messages, tools }, 'The agent')
-    const message = data.choices?.[0]?.message
+    const data = await post(CHAT_URL, { messages, tools, reasoning_effort: REASONING_EFFORT }, 'The agent')
+    const choice = data.choices?.[0]
 
-    if (!message) throw unusable('The agent')
+    if (!choice?.message) throw unusable('The agent')
+
+    // Reasoning that ran away can leave nothing behind once it is stripped.
+    // Saying so beats sending the browser an empty bubble.
+    const content = stripReasoning(choice.message.content)
+    const tooling = Boolean(choice.message.tool_calls?.length)
 
     return {
-        message: { ...message, content: stripReasoning(message.content) },
+        message: { ...choice.message, content: content || (tooling ? '' : LOST_REPLY) },
         usage: data.usage,
         model: data.model ?? null,
+        finish: choice.finish_reason ?? null,
     }
 }
 

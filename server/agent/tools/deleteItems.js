@@ -6,7 +6,7 @@ export const deleteItems = {
     name: 'delete_items',
     confirm: true,
     once: true,
-    description: 'Remove tasks, events or reminders from the user\'s schedule. Call this to delete, cancel, drop or clear something that is already scheduled. Name each item by the title it is saved under, and give its type or its theme as well when more than one item could share that title. This never deletes a theme, only the items inside one. Several items can be removed in one call.',
+    description: 'Remove tasks, events or reminders from the user’s schedule. Call this to delete, cancel, drop or clear something that is already scheduled. Name each item by the title it is saved under, and give its type or its theme as well when more than one item could share that title. Several items can be removed in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -18,6 +18,7 @@ export const deleteItems = {
                     type: 'object',
                     properties: {
                         title: { type: 'string', description: 'The title of the item, exactly as it is saved.' },
+                        id: { type: 'string', description: 'Optional. The item\'s id from list_items. Give this when several items share a title; it settles which one outright. To remove all of them, send one entry per id.' },
                         itemType: { type: 'string', enum: ['Task', 'Event', 'Reminder'], description: 'Optional. The kind of item, when the title alone could match more than one.' },
                         theme: { type: 'string', description: 'Optional. The name of the theme the item is under, when the title alone could match more than one.' }
                     },
