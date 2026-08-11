@@ -20,7 +20,7 @@ export const createItems = {
     name: 'create_items',
     confirm: true,
     once: true,
-    description: 'Add one or more new items to the user\'s schedule, tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Several items can be created in one call.',
+    description: 'Add one or more new items to the user\'s schedule, tasks, events or reminders. Call this to book, add, schedule or create something, once you already know the concrete times it needs. If the request is relative to something already on the schedule ("after my meeting", "same day as X"), read that item first and use its real times. Every item goes in a theme that already exists; if the theme is new, create it first with the theme tool and wait for that to finish. Several items can be created in one call.',
     parameters: {
         type: 'object',
         properties: {
@@ -33,7 +33,7 @@ export const createItems = {
                     properties: {
                         title: { type: 'string', description: 'The name of the item.' },
                         itemType: { type: 'string', enum: ['Task', 'Event', 'Reminder'], description: 'The kind of item to create.' },
-                        theme: { type: 'string', description: 'The name of the theme this item belongs to, such as "Work" or "Personal".' },
+                        theme: { type: 'string', description: 'The name of the theme this item belongs to, such as "Work" or "Personal". The theme must already exist. If it does not, create it in an earlier turn and wait for that to succeed, or this whole call fails and nothing is saved.' },
                         hasDeadline: {type: 'boolean', description: 'For Tasks only. This dictates whether a task has a deadline or not.'},
                         deadline: { type: 'string', description: 'For Tasks only. Only needed if the task has a deadline. ISO 8601 datetime the task is due.' },
                         timeStart: { type: 'string', description: 'For Events only. ISO 8601 datetime the event starts.' },

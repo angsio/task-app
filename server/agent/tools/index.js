@@ -48,6 +48,29 @@ export const TOOLS = { [findTools.name]: findTools, ...RETRIEVABLE }
 
 export const ENTRY_TOOL = findTools.name
 
+/*
+  The order a batch of calls has to run in.
+
+  An item cannot exist without a theme, so every theme write lands before every
+  item write. A theme delete comes last, because it takes its items with it: run
+  before delete_items, it would swallow the items that call was about to name.
+  Anything unlisted runs at 0, which is where the reads sit.
+*/
+const ORDER = {
+    [createThemes.name]: 0,
+    [updateThemes.name]: 0,
+    [createItems.name]: 1,
+    [updateItems.name]: 1,
+    [deleteItems.name]: 1,
+    [deleteThemes.name]: 2,
+}
+
+// (calls) -> the same calls in the order they have to run. Stable, so calls of
+// equal rank stay in the order the model asked for.
+export const inRunOrder = (calls) => [...calls].sort((a, b) => (
+    (ORDER[a.function.name] ?? 0) - (ORDER[b.function.name] ?? 0)
+))
+
 // (tool) -> the OpenAI-style function spec the model is shown
 export const toModelSpec = (tool) => ({
     type: 'function',

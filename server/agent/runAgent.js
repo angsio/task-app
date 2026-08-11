@@ -1,6 +1,6 @@
 import { chat } from './useBedrock.js'
 import { runOnce } from './ledger.js'
-import { TOOLS, ENTRY_TOOL, toModelSpec } from './tools/index.js'
+import { TOOLS, ENTRY_TOOL, toModelSpec, inRunOrder } from './tools/index.js'
 import { resolveTimeZone, formatInZone, utcOffsetIn } from './tools/utilities.js'
 import { emit, newRunId, hashOwner, causeOf, bytesOf, modelMetrics, estimateTokens, embedCostOf, grounding, LOG_CONTENT } from '../metrics/index.js'
 
@@ -19,6 +19,8 @@ You cannot see the schedule and you remember nothing about it between messages. 
 
 GATHER BEFORE YOU ACT. If the request mentions anything already on the schedule, "after my meeting", "the same day as X", "when am I free", list the relevant items and read their real times BEFORE you create or change anything. Never guess a time, a title or a theme, and never state that something is on the schedule unless a tool told you so.
 
+THEMES COME FIRST. Every task, event and reminder lives in a theme, and that theme has to already exist before an item can be created in it or moved into it. Never assume a theme exists because the user named it: list the themes and look. If the one you need is not there, create the theme, wait for it to come back, and only then create the items. Creating a theme and the items that go in it are two separate turns, never one.
+
 TIMES. Every time a tool reports is already in the user's own timezone and reads like "Jul 30, 2026, 5:00 PM EDT". SAY times back in that same style, always naming the zone, for example "8:00 PM EDT". Never answer with a UTC time, an ISO string or a bare number of hours.
 When you WRITE a time into a tool, use ISO carrying this offset: 2 pm for this user is 2026-07-30T14:00:00${offset}. Never write a time ending in Z.
 
@@ -28,6 +30,10 @@ If the user is only chatting, just reply, do not call find_tools. Always finish 
 const DECLINED_REPLY = {
     cancelled: true,
     message: 'The user declined this action. Nothing was created or changed. Tell the user it was cancelled and do not claim it was done.',
+}
+
+const ABANDONED_REPLY = {
+    error: 'An earlier action in this same confirmation failed, so this one was not run. Nothing was created or changed by it. Tell the user which part failed and what is still missing, and do not claim this one was done.',
 }
 
 const STEP_LIMIT_REPLY = `I stopped after ${MAX_STEPS} steps without finishing that. Try asking for one thing at a time.`
@@ -253,6 +259,33 @@ const applyOutcome = (turn, call, { reply, documents = [], removed = [], offer =
 }
 
 /*
+  (turn, calls, step, stopOnError) -> Promise<void>, runs a batch of calls.
+
+  They execute in the order the schema requires, then their results are recorded
+  in the order the model asked for, so the transcript still lines up with its own
+  reply. stopOnError abandons the rest after the first failure, which is what a
+  batch the user approved as one set needs.
+*/
+const runBatch = async (turn, calls, step, stopOnError = false) => {
+    const outcomes = new Map()
+    let failed = false
+
+    for (const call of inRunOrder(calls)) {
+        if (failed) {
+            outcomes.set(call.id, { reply: ABANDONED_REPLY })
+            continue
+        }
+
+        const outcome = await runToolCall(call, turn, step)
+        outcomes.set(call.id, outcome)
+
+        if (stopOnError) failed = Boolean(outcome.reply?.error)
+    }
+
+    for (const call of calls) applyOutcome(turn, call, outcomes.get(call.id))
+}
+
+/*
   Run one turn of the conversation.
 
   In:  messages   message[], the whole transcript. The server keeps no session,
@@ -320,9 +353,10 @@ export const runAgent = async ({ messages, approved, owner, timeZone }) => {
                 })
             }
 
-            for (const call of pending) {
-                applyOutcome(turn, call, approved ? await runToolCall(call, turn, -1) : { reply: DECLINED_REPLY })
-            }
+            // Approved as one set, so the first failure stops the rest rather
+            // than leaving half of them applied.
+            if (approved) await runBatch(turn, pending, -1, true)
+            else pending.forEach(call => applyOutcome(turn, call, { reply: DECLINED_REPLY }))
         }
 
         for (let step = 0; step < MAX_STEPS; step++) {
@@ -334,9 +368,7 @@ export const runAgent = async ({ messages, approved, owner, timeZone }) => {
             const calls = reply.tool_calls ?? []
             if (!calls.length) return toResponse(turn, [])
 
-            for (const call of calls.filter(call => !needsApproval(call))) {
-                applyOutcome(turn, call, await runToolCall(call, turn, step))
-            }
+            await runBatch(turn, calls.filter(call => !needsApproval(call)), step)
 
             const gated = calls.filter(needsApproval)
             if (gated.length) return toResponse(turn, gated)

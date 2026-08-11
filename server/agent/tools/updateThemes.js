@@ -1,9 +1,14 @@
 import { findThemes, changesText } from './utilities.js'
 
-// (changes: object) -> the same fields without `owner`
+// (changes: object) -> the same fields without the ones no update may touch.
 // Ownership comes from the session, never the model, or a call could hand a
-// theme to somebody else.
-const withoutOwner = ({ owner, ...fields }) => fields
+// theme to somebody else. A theme's id is fixed for its lifetime.
+const withoutFixed = ({ owner, _id, ...fields }) => fields
+
+// (doc, changes) -> string | null, the first field that is not on the theme.
+// Mongoose drops an unknown path in silence, so without this the call would
+// report a change it never made.
+const foreignField = (doc, changes) => Object.keys(changes).find(field => !doc.schema.path(field)) ?? null
 
 export const updateThemes = {
     name: 'update_themes',
@@ -50,7 +55,13 @@ export const updateThemes = {
             const doc = known.get(theme.name?.trim().toLowerCase())
             if (!doc) return { reply: { error: `No theme named "${theme.name}" exists.` } }
 
-            const changes = withoutOwner(theme.changes ?? {})
+            const changes = withoutFixed(theme.changes ?? {})
+
+            if (!Object.keys(changes).length) return { reply: { error: `No changes were given for "${theme.name}".` } }
+
+            const foreign = foreignField(doc, changes)
+            if (foreign) return { reply: { error: `Could not change "${theme.name}": a theme has no ${foreign}.` } }
+
             const renamed = changes.name?.trim()
 
             if (renamed) {

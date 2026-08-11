@@ -1,9 +1,14 @@
 import { findItems, findThemeIds, namedAs, changesText } from './utilities.js'
 
-// (changes: object) -> the same fields without `owner`
+// (changes: object) -> the same fields without the ones no update may touch.
 // Ownership comes from the session, never the model, or a call could hand an
-// item to somebody else.
-const withoutOwner = ({ owner, ...fields }) => fields
+// item to somebody else. An item's id and kind are fixed for its lifetime.
+const withoutFixed = ({ owner, _id, itemType, ...fields }) => fields
+
+// (doc, changes) -> string | null, the first field that is not on this item's
+// kind. A Task has no timeStart, and mongoose drops an unknown path in silence,
+// so without this the call would report a change it never made.
+const foreignField = (doc, changes) => Object.keys(changes).find(field => !doc.schema.path(field)) ?? null
 
 export const updateItems = {
     name: 'update_items',
@@ -28,7 +33,7 @@ export const updateItems = {
                             description: 'The fields to set. Give only the ones that change; everything else is left alone.',
                             properties: {
                                 title: { type: 'string', description: 'A new title for the item.' },
-                                theme: { type: 'string', description: 'The name of the theme to move the item to.' },
+                                theme: { type: 'string', description: 'The name of the theme to move the item to. It must already exist; if it does not, create it in an earlier turn and wait for that to succeed.' },
                                 completed: { type: 'boolean', description: 'For Tasks only. Whether the task is done.' },
                                 hasDeadline: { type: 'boolean', description: 'For Tasks only. Whether the task has a deadline at all.' },
                                 deadline: { type: 'string', description: 'For Tasks only. ISO 8601 datetime the task is due.' },
@@ -59,7 +64,12 @@ export const updateItems = {
             if (found[index].error) return { reply: { error: found[index].error } }
 
             const doc = found[index].doc
-            const changes = withoutOwner(item.changes ?? {})
+            const changes = withoutFixed(item.changes ?? {})
+
+            if (!Object.keys(changes).length) return { reply: { error: `No changes were given for "${item.title}".` } }
+
+            const foreign = foreignField(doc, changes)
+            if (foreign) return { reply: { error: `Could not change "${item.title}": a ${doc.itemType} has no ${foreign}.` } }
 
             if (changes.theme) {
                 const themeId = themeIds.get(changes.theme.trim().toLowerCase())

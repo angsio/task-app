@@ -6,7 +6,7 @@ export const deleteThemes = {
     name: 'delete_themes',
     confirm: true,
     once: true,
-    description: 'Delete one or more themes from the user\'s board, together with every task, event and reminder filed under them. Themes are the categories items are grouped under, such as "Work" or "Personal". Call this only when the user wants a whole category and everything in it gone. To remove single items and leave the category standing, use the tool that deletes items instead.',
+    description: 'Delete one or more themes from the user\'s board, together with every task, event and reminder filed under them. Themes are the categories items are grouped under, such as "Work" or "Personal". Call this only when the user wants a whole category and everything in it gone. This cannot be undone, so first list the items in that theme and tell the user how many will go with it. To remove single items and leave the category standing, use the tool that deletes items instead.',
     parameters: {
         type: 'object',
         properties: {
