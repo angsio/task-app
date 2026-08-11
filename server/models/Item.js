@@ -8,14 +8,9 @@ const itemSchema = new mongoose.Schema({
 }, { timestamps: true, discriminatorKey: 'itemType' })
 
 /*
-  Compound, because no query here asks about one field alone: reads are
-  { owner }, { owner, itemType } or { owner, theme }, and the cascade on theme
-  delete is { owner, theme }.
-
-  A compound index also serves any leading subset of itself, so { owner: 1,
-  itemType: 1 } covers a plain { owner } lookup too. That is why neither field
-  carries its own `index: true` any more — a separate one would be redundant
-  and still cost a write on every insert.
+  Reads are { owner }, { owner, itemType } and { owner, theme }, and the cascade
+  on a theme delete is { owner, theme }. A compound index serves any leading
+  subset of itself, so these two cover a plain { owner } lookup as well.
 */
 itemSchema.index({ owner: 1, itemType: 1 })
 itemSchema.index({ owner: 1, theme: 1 })

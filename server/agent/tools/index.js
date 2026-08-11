@@ -2,6 +2,11 @@ import { findTools } from './findTools.js'
 import { listItems } from './listItems.js'
 import { listThemes } from './listThemes.js'
 import { createItems } from './createItems.js'
+import { createThemes } from './createThemes.js'
+import { updateItems } from './updateItems.js'
+import { updateThemes } from './updateThemes.js'
+import { deleteItems } from './deleteItems.js'
+import { deleteThemes } from './deleteThemes.js'
 
 /*
   A tool the model can call.
@@ -10,9 +15,8 @@ import { createItems } from './createItems.js'
     confirm                         the user must approve before it runs
     once                            this call must never execute twice; the
                                     ledger records its id and replays the first
-                                    outcome to any repeat. `confirm` implies it,
-                                    so set this only on a write that does not
-                                    ask for approval
+                                    outcome to any repeat. `confirm` routes
+                                    through the ledger too
     summarise(args, ctx)            plain lines describing a call awaiting
                                     approval, so the client renders text rather
                                     than reading this tool's argument shape
@@ -20,9 +24,11 @@ import { createItems } from './createItems.js'
     run(args, ctx)                  does the work, returns below.
                                     ctx is { owner, timeZone }
 
-  run answers { reply, documents?, offer? }:
+  run answers { reply, documents?, removed?, offer? }:
     reply      the ONLY part the model reads back, keep it small, it costs tokens
-    documents  items this tool wrote, forwarded to the client so its cache updates
+    documents  items and themes this tool wrote, forwarded to the client so its
+               cache updates
+    removed    items and themes this tool deleted, forwarded the same way
     offer      tool names to make callable from here on (find_tools only)
 */
 
@@ -31,6 +37,11 @@ export const RETRIEVABLE = {
     [listItems.name]: listItems,
     [listThemes.name]: listThemes,
     [createItems.name]: createItems,
+    [createThemes.name]: createThemes,
+    [updateItems.name]: updateItems,
+    [updateThemes.name]: updateThemes,
+    [deleteItems.name]: deleteItems,
+    [deleteThemes.name]: deleteThemes,
 }
 
 export const TOOLS = { [findTools.name]: findTools, ...RETRIEVABLE }

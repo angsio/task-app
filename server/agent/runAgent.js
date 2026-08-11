@@ -2,6 +2,7 @@ import { chat } from './useBedrock.js'
 import { runOnce } from './ledger.js'
 import { TOOLS, ENTRY_TOOL, toModelSpec } from './tools/index.js'
 import { resolveTimeZone, formatInZone, utcOffsetIn } from './tools/utilities.js'
+import { emit, newRunId, hashOwner, causeOf, bytesOf, modelMetrics, estimateTokens, embedCostOf, grounding, LOG_CONTENT } from '../metrics/index.js'
 
 const MAX_STEPS = 8
 
@@ -34,30 +35,206 @@ const STEP_LIMIT_REPLY = `I stopped after ${MAX_STEPS} steps without finishing t
 // (call) -> boolean, true if the user must approve this call before it runs.
 const needsApproval = (call) => TOOLS[call.function.name]?.confirm === true
 
-/*
-  (messages) -> toolCall[], the gated calls the user is being asked about.
-
-  Only the last assistant message can hold any, because the loop returns as soon
-  as it produces one. It is not always the last message though: non-gated calls
-  in the same reply run first and append their results after it.
-*/
+// (messages) -> toolCall[], the gated calls the user is being asked about.
+// They sit on the last assistant message, which is not always the last message:
+// non-gated calls in the same reply append their results after it.
 const awaitingApproval = (messages) => {
     const last = messages.findLast(message => message.role === 'assistant')
 
     return (last?.tool_calls ?? []).filter(needsApproval)
 }
 
-// (call, context) -> Promise<{ reply, documents?, offer? }>, runs one tool call.
-// Anything gated, plus anything marked `once`, goes through the ledger so a
-// resent call runs only the first time.
-const runToolCall = async (call, context) => {
-    const tool = TOOLS[call.function.name]
-    if (!tool) return { reply: { error: `Unknown tool: ${call.function.name}` } }
+/*
+  (name, args, outcome) -> the retrieval fields on a tool.call event.
 
-    const args = JSON.parse(call.function.arguments)
-    if (!tool.confirm && !tool.once) return tool.run(args, context)
+  Only find_tools has any: what it matched, and the size of the string it sent
+  to the embedding model. The match fields are left off when the search threw.
+*/
+const retrievalFields = (name, args, outcome) => {
+    if (name !== ENTRY_TOOL) return {}
 
-    return runOnce(call, context.owner, () => tool.run(args, context))
+    const embedTokens = estimateTokens(args?.need ?? '')
+    if (!outcome) return { embedTokens }
+
+    const found = outcome.reply?.found ?? []
+
+    return { embedTokens, retrieved: found.map(match => match.name), retrievedCount: found.length }
+}
+
+/*
+  (call, turn, step) -> Promise<{ reply, documents?, removed?, offer? }>, runs
+  one tool call.
+
+  Anything gated, plus anything marked `once`, goes through the ledger, so a
+  resent call runs only the first time.
+*/
+const runToolCall = async (call, turn, step) => {
+    const name = call.function.name
+    const tool = TOOLS[name]
+    const started = Date.now()
+
+    const record = (args, outcome, error) => {
+        const ms = Date.now() - started
+        const retrieval = retrievalFields(name, args, outcome)
+
+        turn.toolMs += ms
+        turn.called.push(name)
+        turn.embedTokens += retrieval.embedTokens ?? 0
+
+        emit('tool.call', {
+            ...turn.trace,
+            step,
+            tool: name,
+            ms,
+            ok: !error,
+            error: error ?? null,
+            gated: tool?.confirm === true,
+            replyBytes: bytesOf(outcome?.reply),
+            ...retrieval,
+            ...(LOG_CONTENT ? { arguments: call.function.arguments } : {}),
+        })
+    }
+
+    if (!tool) {
+        const outcome = { reply: { error: `Unknown tool: ${name}` } }
+        record(null, outcome, 'unknown_tool')
+
+        return outcome
+    }
+
+    let args
+    try {
+        args = JSON.parse(call.function.arguments)
+    } catch (error) {
+        record(null, null, causeOf(error))
+
+        throw error
+    }
+
+    try {
+        const outcome = (!tool.confirm && !tool.once)
+            ? await tool.run(args, turn.context)
+            : await runOnce(call, turn.context.owner, () => tool.run(args, turn.context))
+
+        record(args, outcome, outcome?.reply?.error ? 'tool_reported_error' : null)
+
+        return outcome
+    } catch (error) {
+        record(args, null, causeOf(error))
+
+        throw error
+    }
+}
+
+/*
+  (turn, step) -> Promise<message>, one model round trip.
+
+  A failed call is recorded and rethrown unchanged, so its latency still counts
+  and an unreachable model is still a 502 to the browser.
+*/
+const callModel = async (turn, step) => {
+    const specs = [...turn.offered].map(name => toModelSpec(TOOLS[name]))
+    const started = Date.now()
+
+    try {
+        const { message, usage, model } = await chat(turn.messages, specs)
+        const ms = Date.now() - started
+        const metrics = modelMetrics(usage, turn.messages, message, model)
+
+        turn.modelMs += ms
+        turn.tokensIn += metrics.tokensIn
+        turn.tokensOut += metrics.tokensOut
+        if (metrics.tokenSource === 'estimated') turn.estimated = true
+        if (metrics.costUsd === null) turn.priced = false
+        else turn.costUsd += metrics.costUsd
+
+        emit('model.call', {
+            ...turn.trace,
+            step,
+            ms,
+            toolsOffered: specs.length,
+            toolCalls: (message.tool_calls ?? []).length,
+            finish: message.tool_calls?.length ? 'tools' : 'text',
+            ok: true,
+            error: null,
+            ...metrics,
+        })
+
+        return message
+    } catch (error) {
+        const ms = Date.now() - started
+        turn.modelMs += ms
+
+        emit('model.call', {
+            ...turn.trace,
+            step,
+            ms,
+            toolsOffered: specs.length,
+            toolCalls: 0,
+            finish: null,
+            ok: false,
+            error: causeOf(error),
+        })
+
+        throw error
+    }
+}
+
+/*
+  (turn) -> the fields shared by every turn.end event, however the turn ended.
+
+  The chat and embedding models are counted apart and never summed.
+*/
+const summarise = (turn) => ({
+    ...turn.trace,
+    ms: Date.now() - turn.startedAt,
+    steps: turn.steps,
+    modelMs: turn.modelMs,
+    toolMs: turn.toolMs,
+    tools: turn.called,
+    path: turn.called.join(' > ') || 'none',
+    chatTokensIn: turn.tokensIn,
+    chatTokensOut: turn.tokensOut,
+    chatTokenSource: turn.estimated ? 'estimated' : 'reported',
+    chatCostUsd: turn.priced ? Math.round(turn.costUsd * 1e6) / 1e6 : null,
+    embedTokens: turn.embedTokens,
+    embedCostUsd: embedCostOf(turn.embedTokens),
+})
+
+/*
+  (turn, pending: toolCall[], outcome?) -> the body sent back to the browser.
+
+  The only exit that does not throw, so turn.end is emitted here rather than at
+  each return. Each pending call becomes { id, name, lines }, the lines coming
+  from that tool's summarise.
+*/
+const toResponse = (turn, pending, outcome) => {
+    if (pending.length) {
+        emit('confirmation', {
+            ...turn.trace,
+            phase: 'issued',
+            tools: pending.map(call => call.function.name),
+            count: pending.length,
+        })
+    }
+
+    emit('turn.end', {
+        ...summarise(turn),
+        outcome: outcome ?? (pending.length ? 'awaiting_confirmation' : 'completed'),
+        error: null,
+        ...grounding(turn),
+    })
+
+    return {
+        messages: turn.messages,
+        documents: turn.documents,
+        removed: turn.removed,
+        pending: pending.map(call => ({
+            id: call.id,
+            name: call.function.name,
+            lines: TOOLS[call.function.name]?.summarise?.(JSON.parse(call.function.arguments), { timeZone: turn.timeZone }) ?? [],
+        })),
+    }
 }
 
 /*
@@ -65,25 +242,15 @@ const runToolCall = async (call, context) => {
 
     reply      appended to turn.messages as this call's tool result
     documents  appended to turn.documents
+    removed    appended to turn.removed
     offer      added to turn.offered, making those tools callable
 */
-const applyOutcome = (turn, call, { reply, documents = [], offer = [] }) => {
+const applyOutcome = (turn, call, { reply, documents = [], removed = [], offer = [] }) => {
     turn.messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(reply) })
     turn.documents.push(...documents)
+    turn.removed.push(...removed)
     offer.filter(name => TOOLS[name]).forEach(name => turn.offered.add(name))
 }
-
-// (turn, pending: toolCall[]) -> the body sent back to the browser. Each pending
-// call becomes { id, name, lines }, the lines coming from that tool's summarise.
-const toResponse = (turn, pending) => ({
-    messages: turn.messages,
-    documents: turn.documents,
-    pending: pending.map(call => ({
-        id: call.id,
-        name: call.function.name,
-        lines: TOOLS[call.function.name]?.summarise?.(JSON.parse(call.function.arguments), { timeZone: turn.timeZone }) ?? [],
-    })),
-})
 
 /*
   Run one turn of the conversation.
@@ -94,13 +261,14 @@ const toResponse = (turn, pending) => ({
        owner      string, the signed-in user's id; scopes every tool
        timeZone   string, the browser's IANA zone; how every time is phrased
 
-  Out: { messages, pending, documents }
+  Out: { messages, pending, documents, removed }
        messages   message[], the transcript to send back next turn
        pending    action[], each { id, name, lines } awaiting a yes/no
-       documents  doc[], items written this turn, for the browser's cache
+       documents  doc[], items and themes written this turn, for the browser's cache
+       removed    doc[], items and themes deleted this turn, for the same cache
 */
 export const runAgent = async ({ messages, approved, owner, timeZone }) => {
-    
+
     const zone = resolveTimeZone(timeZone)
     const turn = {
         messages: [
@@ -111,31 +279,77 @@ export const runAgent = async ({ messages, approved, owner, timeZone }) => {
         context: { owner, timeZone: zone },
         offered: new Set([ENTRY_TOOL]),
         documents: [],
+        removed: [],
+
+        // Everything below this line exists only to be measured.
+        trace: { runId: newRunId(), ownerHash: hashOwner(owner) },
+        startedAt: Date.now(),
+        steps: 0,
+        modelMs: 0,
+        toolMs: 0,
+        called: [],
+        tokensIn: 0,
+        tokensOut: 0,
+        costUsd: 0,
+        embedTokens: 0,
+        estimated: false,
+        priced: true,
     }
 
-    // Answering a confirmation. `false` is an answer too, so this tests for the
-    // field being present rather than for it being true.
-    if (approved !== undefined) {
-        for (const call of awaitingApproval(turn.messages)) {
-            applyOutcome(turn, call, approved ? await runToolCall(call, turn.context) : { reply: DECLINED_REPLY })
+    // Before any work, so a turn that dies with the process still left a record.
+    emit('turn.start', {
+        ...turn.trace,
+        messages: messages.length,
+        resuming: approved !== undefined,
+        timeZone: zone,
+    })
+
+    try {
+        // Answering a confirmation. `false` is an answer too, so this tests for
+        // the field being present rather than for it being true.
+        if (approved !== undefined) {
+            const pending = awaitingApproval(turn.messages)
+
+            // The other half of the confirmation, arriving in its own request.
+            if (pending.length) {
+                emit('confirmation', {
+                    ...turn.trace,
+                    phase: approved ? 'approved' : 'declined',
+                    tools: pending.map(call => call.function.name),
+                    count: pending.length,
+                })
+            }
+
+            for (const call of pending) {
+                applyOutcome(turn, call, approved ? await runToolCall(call, turn, -1) : { reply: DECLINED_REPLY })
+            }
         }
-    }
 
-    for (let step = 0; step < MAX_STEPS; step++) {
-        const reply = await chat(turn.messages, [...turn.offered].map(name => toModelSpec(TOOLS[name])))
-        turn.messages.push(reply)
+        for (let step = 0; step < MAX_STEPS; step++) {
+            turn.steps = step + 1
 
-        const calls = reply.tool_calls ?? []
-        if (!calls.length) return toResponse(turn, [])
+            const reply = await callModel(turn, step)
+            turn.messages.push(reply)
 
-        for (const call of calls.filter(call => !needsApproval(call))) {
-            applyOutcome(turn, call, await runToolCall(call, turn.context))
+            const calls = reply.tool_calls ?? []
+            if (!calls.length) return toResponse(turn, [])
+
+            for (const call of calls.filter(call => !needsApproval(call))) {
+                applyOutcome(turn, call, await runToolCall(call, turn, step))
+            }
+
+            const gated = calls.filter(needsApproval)
+            if (gated.length) return toResponse(turn, gated)
         }
 
-        const gated = calls.filter(needsApproval)
-        if (gated.length) return toResponse(turn, gated)
-    }
+        turn.messages.push({ role: 'assistant', content: STEP_LIMIT_REPLY })
 
-    turn.messages.push({ role: 'assistant', content: STEP_LIMIT_REPLY })
-    return toResponse(turn, [])
+        return toResponse(turn, [], 'step_limit')
+    } catch (error) {
+        // A partial turn is recorded, not discarded, and rethrown untouched so
+        // errors.js still decides the status code.
+        emit('turn.end', { ...summarise(turn), outcome: 'error', error: causeOf(error) })
+
+        throw error
+    }
 }

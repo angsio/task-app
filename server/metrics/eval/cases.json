@@ -1,0 +1,254 @@
+[
+  {
+    "id": "read-day",
+    "query": "see what is already scheduled on a day",
+    "expected": ["list_items"],
+    "note": "the phrasing the system prompt itself suggests to the model"
+  },
+  {
+    "id": "read-upcoming",
+    "query": "find out what is coming up this week",
+    "expected": ["list_items"]
+  },
+  {
+    "id": "read-free-slot",
+    "query": "check when the user is free",
+    "expected": ["list_items"],
+    "note": "no tool answers this directly; reading the schedule is the only route"
+  },
+  {
+    "id": "read-clash",
+    "query": "check whether anything already clashes with a time",
+    "expected": ["list_items"]
+  },
+  {
+    "id": "read-deadline",
+    "query": "look up when a task is due",
+    "expected": ["list_items"]
+  },
+  {
+    "id": "read-before-write",
+    "query": "read the real time of an existing meeting so I can schedule after it",
+    "expected": ["list_items"],
+    "note": "the read half of a read-then-write turn"
+  },
+  {
+    "id": "read-one-type",
+    "query": "list only the reminders",
+    "expected": ["list_items"]
+  },
+  {
+    "id": "themes-list",
+    "query": "see which categories exist",
+    "expected": ["list_themes"]
+  },
+  {
+    "id": "themes-named",
+    "query": "find out what themes the user has",
+    "expected": ["list_themes"]
+  },
+  {
+    "id": "themes-verify",
+    "query": "check that a theme exists before putting something in it",
+    "expected": ["list_themes"]
+  },
+  {
+    "id": "themes-groups",
+    "query": "what groups are things organised under",
+    "expected": ["list_themes"],
+    "note": "asks for the concept without using the word theme or category"
+  },
+  {
+    "id": "write-event",
+    "query": "create an event",
+    "expected": ["create_items"]
+  },
+  {
+    "id": "write-task",
+    "query": "add a task with a deadline",
+    "expected": ["create_items"]
+  },
+  {
+    "id": "write-reminder",
+    "query": "set a reminder",
+    "expected": ["create_items"]
+  },
+  {
+    "id": "write-book",
+    "query": "book something into the schedule",
+    "expected": ["create_items"],
+    "note": "book rather than create or add"
+  },
+  {
+    "id": "write-batch",
+    "query": "add several things to the schedule at once",
+    "expected": ["create_items"]
+  },
+  {
+    "id": "theme-create",
+    "query": "make a new category to group things under",
+    "expected": ["create_themes"]
+  },
+  {
+    "id": "theme-create-named",
+    "query": "add a Work theme to the board",
+    "expected": ["create_themes"]
+  },
+  {
+    "id": "theme-create-missing",
+    "query": "the theme this belongs under does not exist yet, make it",
+    "expected": ["create_themes"],
+    "note": "the case the create_themes description calls out explicitly"
+  },
+  {
+    "id": "update-move",
+    "query": "move a meeting to a different time",
+    "expected": ["update_items"]
+  },
+  {
+    "id": "update-postpone",
+    "query": "push a deadline back to next week",
+    "expected": ["update_items"]
+  },
+  {
+    "id": "update-complete",
+    "query": "mark a task as done",
+    "expected": ["update_items"]
+  },
+  {
+    "id": "update-rename",
+    "query": "rename something already on the schedule",
+    "expected": ["update_items"]
+  },
+  {
+    "id": "update-refile",
+    "query": "file an existing item under a different theme",
+    "expected": ["update_items"],
+    "note": "names a theme but changes an item; update_themes is the wrong answer"
+  },
+  {
+    "id": "theme-rename",
+    "query": "rename a category",
+    "expected": ["update_themes"]
+  },
+  {
+    "id": "theme-recolour",
+    "query": "change the colour of a theme",
+    "expected": ["update_themes"],
+    "note": "colour is the one capability no other tool has"
+  },
+  {
+    "id": "theme-hide",
+    "query": "hide a category from the board",
+    "expected": ["update_themes"]
+  },
+  {
+    "id": "theme-show",
+    "query": "show a hidden group on the board again",
+    "expected": ["update_themes"]
+  },
+  {
+    "id": "delete-item",
+    "query": "delete an item from the schedule",
+    "expected": ["delete_items"]
+  },
+  {
+    "id": "delete-cancel",
+    "query": "cancel a meeting that is no longer happening",
+    "expected": ["delete_items"],
+    "note": "cancel rather than delete"
+  },
+  {
+    "id": "delete-batch",
+    "query": "remove several reminders at once",
+    "expected": ["delete_items"]
+  },
+  {
+    "id": "delete-drop",
+    "query": "drop a task I no longer need to do",
+    "expected": ["delete_items"]
+  },
+  {
+    "id": "theme-delete",
+    "query": "get rid of a category",
+    "expected": ["delete_themes"]
+  },
+  {
+    "id": "theme-delete-cascade",
+    "query": "remove a group and everything filed under it",
+    "expected": ["delete_themes"],
+    "note": "the cascade is what separates this from delete_items"
+  },
+  {
+    "id": "disc-delete-item",
+    "query": "delete my gym session on Tuesday",
+    "expected": ["delete_items"],
+    "note": "discriminator: one item, named by title"
+  },
+  {
+    "id": "disc-delete-theme",
+    "query": "delete the Gym category itself, not the sessions in it",
+    "expected": ["delete_themes"],
+    "note": "discriminator: the pair above with the same noun; the hardest split in the catalogue"
+  },
+  {
+    "id": "disc-update-item",
+    "query": "rename my dentist appointment",
+    "expected": ["update_items"]
+  },
+  {
+    "id": "disc-update-theme",
+    "query": "rename the Health category",
+    "expected": ["update_themes"],
+    "note": "discriminator: same verb as the pair above, different target"
+  },
+  {
+    "id": "either-check-then-add",
+    "query": "check the schedule and then put something on it",
+    "expected": ["list_items", "create_items"],
+    "note": "genuinely two capabilities; both should be in the top matches"
+  },
+  {
+    "id": "either-theme-then-add",
+    "query": "find the right category and file a new item under it",
+    "expected": ["list_themes", "create_items"]
+  },
+  {
+    "id": "out-email",
+    "query": "send an email to someone",
+    "expected": [],
+    "absent": "unrelated"
+  },
+  {
+    "id": "out-weather",
+    "query": "look up tomorrow's weather forecast",
+    "expected": [],
+    "absent": "unrelated"
+  },
+  {
+    "id": "out-translate",
+    "query": "translate this paragraph into French",
+    "expected": [],
+    "absent": "unrelated"
+  },
+  {
+    "id": "out-music",
+    "query": "play some music while I work",
+    "expected": [],
+    "absent": "unrelated"
+  },
+  {
+    "id": "out-invite",
+    "query": "invite a colleague to a meeting and share my calendar",
+    "expected": [],
+    "absent": "adjacent",
+    "note": "scheduling vocabulary, no matching capability; the threshold cannot separate this"
+  },
+  {
+    "id": "out-export",
+    "query": "download my whole schedule as a spreadsheet",
+    "expected": [],
+    "absent": "adjacent",
+    "note": "reading the schedule is real, exporting it is not; list_items is a defensible match"
+  }
+]

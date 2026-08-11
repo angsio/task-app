@@ -2,16 +2,16 @@ import { useState } from 'react'
 
 import { sendTurn } from '../../../api'
 import { useMutation } from '../../../hooks'
-import { useItems } from '../../../data'
+import { useItems, useThemes } from '../../../data'
+
+// (doc) -> boolean, true for an item, false for a theme. Only items carry a
+// discriminator, so it says which cache a document belongs in.
+const isItem = (doc) => Boolean(doc.itemType)
 
 /*
   The agent conversation.
 
-  The server keeps no session, so the transcript IS the state and it round-trips
-  on every turn. This hook owns it, along with whatever is waiting on the user's
-  yes/no, so the panel below only renders.
-
-  In:  nothing. It reads upsert from useItems.
+  In:  nothing. It reads the theme and item caches itself.
 
   Out: { messages, pending, busy, ask, approve, decline }
        messages  message[], the transcript so far
@@ -21,21 +21,26 @@ import { useItems } from '../../../data'
        approve   () -> Promise<void>, run the pending actions
        decline   () -> Promise<void>, answer no; the agent carries on and says so
 
-  Anything the agent wrote comes back as `documents` and is upserted into the
-  shared item cache, so the timetable updates without a refetch and without
-  disturbing this conversation.
+  Anything the agent wrote comes back as `documents` and anything it deleted as
+  `removed`, each sorted into the shared theme and item caches, so the board
+  updates without a refetch and without disturbing this conversation.
 */
 export const useAgent = () => {
     const [messages, setMessages] = useState([])
     const [pending, setPending] = useState([])
 
     const { mutate: sendTurnMutation, loading: busy } = useMutation(sendTurn)
-    const { upsert: upsertItem } = useItems()
+    const { upsert: upsertItem, remove: removeItem } = useItems()
+    const { upsert: upsertTheme, remove: removeTheme } = useThemes()
 
     const take = (turn) => {
         setMessages(turn.messages)
         setPending(turn.pending)
-        upsertItem(...turn.documents)
+
+        upsertItem(...turn.documents.filter(isItem))
+        upsertTheme(...turn.documents.filter(doc => !isItem(doc)))
+        removeItem(...turn.removed.filter(isItem))
+        removeTheme(...turn.removed.filter(doc => !isItem(doc)))
     }
 
     const ask = async (text) => {

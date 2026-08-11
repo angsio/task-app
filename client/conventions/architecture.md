@@ -259,8 +259,8 @@ prompt -> chat ─┬─ no tool call ─────────────> r
 
 This costs one extra round trip versus retrieving up front, and buys two things:
 the model searches with a *targeted* query ("create a recurring task") instead of
-the raw prompt, and chit-chat skips retrieval entirely. At three tools it is an
-investment; it is the right shape at thirty.
+the raw prompt, and chit-chat skips retrieval entirely. At eight tools it is
+starting to earn its keep; it is the right shape at thirty.
 
 > **The system prompt is load-bearing.** It is the only thing standing between a
 > retrieval-based agent and a confident hallucination, and it carries three jobs:

@@ -5,7 +5,7 @@ import { runAgent } from '../agent/runAgent.js'
 
 const router = express.Router()
 
-// POST { messages, approved?, timeZone? } -> { messages, pending, documents }
+// POST { messages, approved?, timeZone? } -> { messages, pending, documents, removed }
 // `approved` is present only when answering a pending confirmation, so one
 // entry point serves both cases.
 router.post('/', async (req, res) => {

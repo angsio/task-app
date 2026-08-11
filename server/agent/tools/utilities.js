@@ -1,40 +1,39 @@
-import { Theme } from '../../models/index.js'
+import { Theme, Item } from '../../models/index.js'
 
 const SERVER_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone
 
-/*
-  (text: string) -> string with every regex-special character turned into a
-  literal one, so the text matches itself when used as a pattern.
-
-  Theme names arrive as the user typed them. Left alone, the brackets in
-  "Work (Q3)" would be read as regex syntax rather than as brackets.
-*/
+// (text: string) -> the same text with every regex-special character escaped,
+// so a name like "Work (Q3)" matches itself rather than reading as a pattern.
 const escapeRegexChars = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 // (name: string) -> RegExp matching that whole name and nothing else, any case
-const exactNameRegex = (name) => new RegExp(`^${escapeRegexChars(name.trim())}$`, 'i')
+export const exactNameRegex = (name) => new RegExp(`^${escapeRegexChars(name.trim())}$`, 'i')
 
 /*
-  Resolve many theme names at once.
+  Resolve many theme names at once, in one query.
 
   In:  names  string[], as the model wrote them. Duplicates and blanks are fine
        owner  string, the session's account
-  Out: Promise<Map<string, ObjectId>>, keyed by lowercased name
-
-  One query regardless of how many items are being created. The loop that
-  preceded this ran a findOne per item, so a five-item batch under one theme
-  cost five identical round trips.
+  Out: Promise<Map<string, theme>>, keyed by lowercased name
 */
-export const findThemeIds = async (names, owner) => {
+export const findThemes = async (names, owner) => {
     const wanted = [...new Set(names.map(name => name?.trim()).filter(Boolean))]
     if (!wanted.length) return new Map()
 
     const themes = await Theme.find({
         owner,
         name: { $in: wanted.map(exactNameRegex) },
-    }).select('name').lean()
+    })
 
-    return new Map(themes.map(theme => [theme.name.toLowerCase(), theme._id]))
+    return new Map(themes.map(theme => [theme.name.toLowerCase(), theme]))
+}
+
+// (names: string[], owner: string) -> Promise<Map<string, ObjectId>>, keyed by
+// lowercased name
+export const findThemeIds = async (names, owner) => {
+    const themes = await findThemes(names, owner)
+
+    return new Map([...themes].map(([name, theme]) => [name, theme._id]))
 }
 
 // (name: string, owner: string) -> Promise<ObjectId | null>
@@ -44,13 +43,74 @@ export const findThemeId = async (name, owner) => {
     return theme?._id ?? null
 }
 
-/*
-  (zone: string | undefined) -> string, an IANA name like 'America/Toronto'
+// (items) -> Map<string, item[]>, grouped by lowercased title in one pass,
+// rather than filtering the whole list once per locator.
+const groupByTitle = (items) => {
+    const groups = new Map()
 
-  The browser sends its own zone, so this falls back to the server's when it is
-  missing or not a real one. It is user input on its way into Intl, which throws
-  on anything it does not recognise.
+    for (const item of items) {
+        const key = item.title.toLowerCase()
+        const group = groups.get(key)
+
+        if (group) group.push(item)
+        else groups.set(key, [item])
+    }
+
+    return groups
+}
+
+/*
+  Resolve many item locators at once, for the tools that change or remove
+  something already on the schedule.
+
+  In:  locators  { title, itemType?, theme? }[], as the model wrote them
+       owner     string, the session's account
+  Out: Promise<({ doc } | { error })[]>, one entry per locator, in order.
+       An entry is an error when the theme does not exist, when nothing is
+       called that, or when the title matches more than one item
+
+  Two queries however long the batch is, and they do not wait on each other.
+  Every item comes back scoped to the owner, so a title only ever resolves
+  within their own schedule.
 */
+export const findItems = async (locators, owner) => {
+    const wanted = [...new Set(locators.map(locator => locator.title?.trim()).filter(Boolean))]
+
+    const [themes, found] = await Promise.all([
+        findThemes(locators.map(locator => locator.theme), owner),
+        wanted.length ? Item.find({ owner, title: { $in: wanted.map(exactNameRegex) } }) : [],
+    ])
+
+    const byTitle = groupByTitle(found)
+
+    return locators.map(({ title, itemType, theme }) => {
+        if (!title?.trim()) return { error: 'Every item has to be named by the title it is saved under.' }
+
+        const themeId = theme && themes.get(theme.trim().toLowerCase())?._id
+        if (theme && !themeId) return { error: `No theme named "${theme}" exists.` }
+
+        const matches = (byTitle.get(title.trim().toLowerCase()) ?? []).filter(item => (
+            (!itemType || item.itemType === itemType) && (!themeId || item.theme.equals(themeId))
+        ))
+
+        if (!matches.length) return { error: `Nothing on the schedule is called "${title}".` }
+        if (matches.length > 1) return { error: `"${title}" matches ${matches.length} items. Name its type or its theme to say which one.` }
+
+        return { doc: matches[0] }
+    })
+}
+
+// (locator: { title, itemType?, theme? }) -> string, the item as the model named
+// it, for the confirmation the user reads before it is changed or removed.
+export const namedAs = ({ title, itemType, theme }) => {
+    const qualifiers = [itemType, theme && `in ${theme}`].filter(Boolean)
+
+    return qualifiers.length ? `${title} (${qualifiers.join(' ')})` : title
+}
+
+// (zone: string | undefined) -> string, an IANA name like 'America/Toronto'
+// Falls back to the server's zone when the browser sends none, or sends one
+// Intl does not recognise.
 export const resolveTimeZone = (zone) => {
     if (!zone) return SERVER_ZONE
 
@@ -62,13 +122,8 @@ export const resolveTimeZone = (zone) => {
     }
 }
 
-/*
-  (value: string | Date | null, timeZone: string) -> string | null
-  Reads like "Jul 30, 2026, 5:00 PM EDT".
-
-  Every time the model is shown goes through here, so it reads back the user's
-  own wall-clock time with the zone named, rather than a UTC stamp.
-*/
+// (value: string | Date | null, timeZone: string) -> string | null
+// Reads like "Jul 30, 2026, 5:00 PM EDT".
 export const formatInZone = (value, timeZone) => {
     if (!value) return null
 
@@ -83,9 +138,15 @@ export const formatInZone = (value, timeZone) => {
     })
 }
 
+const TIME_FIELDS = new Set(['deadline', 'timeStart', 'timeEnd', 'reminderTime'])
+
+// (changes: object, timeZone: string) -> string, the fields an update would set,
+// times in words. Reads like "title to Gym, timeStart to Jul 30, 2026, 5:00 PM EDT".
+export const changesText = (changes = {}, timeZone) => Object.entries(changes)
+    .map(([field, value]) => `${field} to ${TIME_FIELDS.has(field) ? formatInZone(value, timeZone) : value}`)
+    .join(', ')
+
 // (date: Date, timeZone: string) -> string like "-04:00"
-// The offset the model writes into an ISO time, so what it saves lands in the
-// user's zone rather than the server's.
 export const utcOffsetIn = (date, timeZone) => {
     const parts = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' }).formatToParts(date)
     const name = parts.find(part => part.type === 'timeZoneName')?.value ?? 'GMT'

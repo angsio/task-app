@@ -50,8 +50,7 @@ export const createItems = {
     run: async ({ items } = {}, { owner }) => {
         const staged = []
 
-        // Every theme named in the batch, resolved in one query up front rather
-        // than one per item.
+        // Every theme named in the batch, resolved in one query.
         const themeIds = await findThemeIds(items.map(item => item.theme), owner)
 
         for (const item of items) {

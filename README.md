@@ -22,7 +22,7 @@ Raspberry Pi 4B.
 ## Tools Are Retrieved, Not Handed Over
 
 The usual way to give a model tools is to put every tool in the request and let
-it choose. That works at three tools and degrades as the list grows, because
+it choose. That is fine at three tools and degrades as the list grows, because
 every description competes for attention in the same prompt.
 
 Here the model starts holding exactly one tool, `find_tools`. When it needs to
@@ -31,6 +31,10 @@ what is already scheduled on a day", "create an event" — and that sentence is
 embedded and matched against the tool descriptions in pgvector. Only the nearest
 matches become callable, and they stay callable for the rest of the turn. It can
 search again at any step, which is what a read-then-write request needs.
+
+Eight tools are retrievable: list, create, update and delete, for items and for
+themes. `find_tools` itself is the ninth and is never retrieved, since it is the
+one the model always holds.
 
 The second half is that writes are gated. Each tool declares `confirm: true` or
 not. Read tools run the moment they are called; a write tool stops the loop and
@@ -56,30 +60,56 @@ else's name even if the model asks for it.
 
 ## Known Limitations
 
-At three retrievable tools the similarity threshold is not doing real work — the
-nearest match is nearly always right because there is barely anything to choose
-between. **Retrieval quality here is unmeasured.** The pipeline is built for the
-point where there are thirty tools, and that point has not arrived.
+There are eight retrievable tools now, up from three. The threshold has more to
+do than it used to: list, create, update and delete each exist for items and for
+themes, so a query has close neighbours to get wrong rather than one obvious
+answer. Eight is still not thirty, which is the size the pipeline was built for.
+
+Retrieval quality is measured now rather than assumed. `npm run eval` scores it
+against 46 cases offline, and `npm run metrics` reports what the live agent did.
+[`server/metrics/`](server/metrics/README.md) covers what those numbers mean and
+what they leave out. The main thing they leave out is groundedness: there is no
+score for whether an answer stuck to what the tools returned, only a narrow check
+on the times the model stated.
 
 Writes are last-write-wins at field granularity, because `PATCH` is partial and
 there is no version check on the document. Two tabs editing the same item will
-not conflict, they will simply overwrite each other. There are no automated
-tests.
+not conflict, they will simply overwrite each other. The ledger stops one call
+running twice. It does nothing about two different calls arriving at once.
+
+There are still no automated tests. The eval harness is not one. It scores
+retrieval, it asserts nothing, and it cannot fail a build.
 
 ## Running Locally
 
 ```bash
 cd server && npm install && npm run dev      # :5001
 node agent/seedTools.js                      # seeds the retrieval index
+node scripts/indexes.js                      # shows the indexes; --drop prunes
 cd client && npm install && npm run dev      # :5173
 ```
 
 `seedTools.js` needs running once, and again after any tool description changes.
+The descriptions are what retrieval matches against, so editing one without
+reseeding leaves the index disagreeing with the code.
+
+Two more, neither of which touches the request path:
+
+```bash
+cd server
+npm run eval        # score retrieval against metrics/eval/cases.json
+npm run metrics     # print the report over the retained window
+```
 
 ```
 server/.env   PORT  MONGODB_URI  AUTH_URL  ALLOWED_ORIGINS
               SUPABASE_URL  SUPABASE_SECRET_KEY
               AWS_MODELS_TOKEN  CHAT_URL  EMBED_URL
+
+              METRICS_SALT  and the METRICS_* / EVAL_* settings in
+              server/metrics/README.md. Set METRICS_SALT before running
+              anywhere real: account ids are short and enumerable, so an
+              unsalted hash is reversible by anyone holding the id list.
 
 client/.env   VITE_API_URL  VITE_AUTH_URL
 ```

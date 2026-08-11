@@ -1,7 +1,8 @@
 // Throw this to choose the status code; anything else becomes a 500.
+// `message` is sent to the client, so put the underlying fault in options.cause.
 export class ApiError extends Error {
-    constructor(statusCode, message) {
-        super(message)
+    constructor(statusCode, message, options) {
+        super(message, options)
         this.statusCode = statusCode
     }
 }

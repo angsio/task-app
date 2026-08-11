@@ -1,7 +1,9 @@
 import { embed } from '../useBedrock.js'
 import { matchTools } from '../useSupabase.js'
 
-const MIN_SIMILARITY = 0.05
+// Changing either means updating metrics/eval/run.js and metrics/report.js,
+// which restate them to report against what production applies.
+const MIN_SIMILARITY = 0.13
 const MAX_MATCHES = 3
 
 export const findTools = {

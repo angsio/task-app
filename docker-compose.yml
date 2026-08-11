@@ -11,6 +11,12 @@ services:
     environment:
       AUTH_URL: "http://auth-server:5002"
       ALLOWED_ORIGINS: "https://tasks.frangiclave.com"
+    # Metrics are written inside the container, so without this they sit in the
+    # writable layer that a rebuild replaces. Bound to a folder on the host
+    # rather than a named volume, so the report can read it without docker exec
+    # and an eval run from this directory lands beside the live telemetry.
+    volumes:
+      - ./server/metrics/data:/app/metrics/data
     restart: unless-stopped
     networks:
       - web
