@@ -32,12 +32,13 @@ export const listItems = {
         },
         required: []
     },
-    run: async ({ itemType, theme } = {}, { owner, timeZone }) => {
+    run: async ({ itemType, theme } = {}, ctx) => {
+        const { owner, timeZone } = ctx
         const filter = { owner }
         if (itemType) filter.itemType = itemType
 
         if (theme) {
-            const themeId = await findThemeId(theme, owner)
+            const themeId = await findThemeId(theme, ctx)
             if (!themeId) return { reply: { error: `No theme named "${theme}" exists.` } }
             filter.theme = themeId
         }

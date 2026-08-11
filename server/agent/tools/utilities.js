@@ -13,50 +13,31 @@ export const exactNameRegex = (name) => new RegExp(`^${escapeRegexChars(name.tri
   Resolve many theme names at once, in one query.
 
   In:  names  string[], as the model wrote them. Duplicates and blanks are fine
-       owner  string, the session's account
+       ctx    the tool context, { owner, session }
   Out: Promise<Map<string, theme>>, keyed by lowercased name
 */
-export const findThemes = async (names, owner) => {
+export const findThemes = async (names, { owner, session }) => {
     const wanted = [...new Set(names.map(name => name?.trim()).filter(Boolean))]
     if (!wanted.length) return new Map()
 
-    const themes = await Theme.find({
-        owner,
-        name: { $in: wanted.map(exactNameRegex) },
-    })
+    const themes = await Theme.find({ owner, name: { $in: wanted.map(exactNameRegex) } }).session(session)
 
     return new Map(themes.map(theme => [theme.name.toLowerCase(), theme]))
 }
 
-// (names: string[], owner: string) -> Promise<Map<string, ObjectId>>, keyed by
-// lowercased name
-export const findThemeIds = async (names, owner) => {
-    const themes = await findThemes(names, owner)
+// (names: string[], ctx) -> Promise<Map<string, ObjectId>>, keyed by lowercased name
+export const findThemeIds = async (names, ctx) => {
+    const themes = await findThemes(names, ctx)
 
     return new Map([...themes].map(([name, theme]) => [name, theme._id]))
 }
 
-// (name: string, owner: string) -> Promise<ObjectId | null>
-// Scoped to the owner, so a theme name only ever resolves within their board.
-export const findThemeId = async (name, owner) => {
-    const theme = await Theme.findOne({ name: exactNameRegex(name), owner }).lean()
+// (name: string, ctx) -> Promise<ObjectId | null>
+// Scoped to the owner, so a name only ever resolves within their board.
+export const findThemeId = async (name, { owner, session }) => {
+    const theme = await Theme.findOne({ name: exactNameRegex(name), owner }).session(session).lean()
+
     return theme?._id ?? null
-}
-
-// (items) -> Map<string, item[]>, grouped by lowercased title in one pass,
-// rather than filtering the whole list once per locator.
-const groupByTitle = (items) => {
-    const groups = new Map()
-
-    for (const item of items) {
-        const key = item.title.toLowerCase()
-        const group = groups.get(key)
-
-        if (group) group.push(item)
-        else groups.set(key, [item])
-    }
-
-    return groups
 }
 
 /*
@@ -64,7 +45,7 @@ const groupByTitle = (items) => {
   something already on the schedule.
 
   In:  locators  { title, itemType?, theme? }[], as the model wrote them
-       owner     string, the session's account
+       ctx       the tool context, { owner, session }
   Out: Promise<({ doc } | { error })[]>, one entry per locator, in order.
        An entry is an error when the theme does not exist, when nothing is
        called that, or when the title matches more than one item
@@ -73,15 +54,24 @@ const groupByTitle = (items) => {
   Every item comes back scoped to the owner, so a title only ever resolves
   within their own schedule.
 */
-export const findItems = async (locators, owner) => {
+export const findItems = async (locators, ctx) => {
     const wanted = [...new Set(locators.map(locator => locator.title?.trim()).filter(Boolean))]
 
     const [themes, found] = await Promise.all([
-        findThemes(locators.map(locator => locator.theme), owner),
-        wanted.length ? Item.find({ owner, title: { $in: wanted.map(exactNameRegex) } }) : [],
+        findThemes(locators.map(locator => locator.theme), ctx),
+        wanted.length
+            ? Item.find({ owner: ctx.owner, title: { $in: wanted.map(exactNameRegex) } }).session(ctx.session)
+            : [],
     ])
 
-    const byTitle = groupByTitle(found)
+    // Grouped in one pass, rather than filtering the whole list once per locator.
+    const byTitle = new Map()
+    for (const item of found) {
+        const group = byTitle.get(item.title.toLowerCase())
+
+        if (group) group.push(item)
+        else byTitle.set(item.title.toLowerCase(), [item])
+    }
 
     return locators.map(({ title, itemType, theme }) => {
         if (!title?.trim()) return { error: 'Every item has to be named by the title it is saved under.' }
@@ -100,8 +90,7 @@ export const findItems = async (locators, owner) => {
     })
 }
 
-// (locator: { title, itemType?, theme? }) -> string, the item as the model named
-// it, for the confirmation the user reads before it is changed or removed.
+// (locator: { title, itemType?, theme? }) -> string, the item as the model named it
 export const namedAs = ({ title, itemType, theme }) => {
     const qualifiers = [itemType, theme && `in ${theme}`].filter(Boolean)
 

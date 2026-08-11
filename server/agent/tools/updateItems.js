@@ -50,14 +50,14 @@ export const updateItems = {
         required: ['items']
     },
     summarise: ({ items }, { timeZone }) => items.map(item => `Change ${namedAs(item)}: ${changesText(item.changes, timeZone)}`),
-    run: async ({ items } = {}, { owner }) => {
+    run: async ({ items } = {}, ctx) => {
         const staged = []
 
         // Every item named in the batch, and every theme they are being moved
         // to, resolved together rather than one lookup per item.
         const [found, themeIds] = await Promise.all([
-            findItems(items, owner),
-            findThemeIds(items.map(item => item.changes?.theme), owner),
+            findItems(items, ctx),
+            findThemeIds(items.map(item => item.changes?.theme), ctx),
         ])
 
         for (const [index, item] of items.entries()) {
@@ -88,7 +88,7 @@ export const updateItems = {
             staged.push(doc)
         }
 
-        await Promise.all(staged.map(doc => doc.save()))
+        await Promise.all(staged.map(doc => doc.save({ session: ctx.session })))
 
         return {
             reply: {

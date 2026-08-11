@@ -28,17 +28,17 @@ export const deleteItems = {
         required: ['items']
     },
     summarise: ({ items }) => items.map(item => `Delete ${namedAs(item)}`),
-    run: async ({ items } = {}, { owner }) => {
+    run: async ({ items } = {}, ctx) => {
         const staged = []
 
         // Every item named in the batch, resolved together.
-        for (const found of await findItems(items, owner)) {
+        for (const found of await findItems(items, ctx)) {
             if (found.error) return { reply: { error: found.error } }
 
             staged.push(found.doc)
         }
 
-        await Item.deleteMany({ owner, _id: { $in: staged.map(doc => doc._id) } })
+        await Item.deleteMany({ owner: ctx.owner, _id: { $in: staged.map(doc => doc._id) } }, { session: ctx.session })
 
         return {
             reply: {

@@ -7,8 +7,8 @@ export const listThemes = {
         type: 'object',
         properties: {}
     },
-    run: async (args, { owner }) => {
-        const themes = await Theme.find({ owner }).lean()
+    run: async (args, { owner, session }) => {
+        const themes = await Theme.find({ owner }).session(session).lean()
 
         return { reply: themes.map(theme => ({ id: theme._id, name: theme.name })) }
     },

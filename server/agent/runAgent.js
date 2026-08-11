@@ -1,6 +1,8 @@
+import mongoose from 'mongoose'
+
 import { chat } from './useBedrock.js'
-import { runOnce } from './ledger.js'
-import { TOOLS, ENTRY_TOOL, toModelSpec, inRunOrder } from './tools/index.js'
+import { runOnce, forget } from './ledger.js'
+import { TOOLS, ENTRY_TOOL, toModelSpec, inRunOrder, argumentsOf } from './tools/index.js'
 import { resolveTimeZone, formatInZone, utcOffsetIn } from './tools/utilities.js'
 import { emit, newRunId, hashOwner, causeOf, bytesOf, modelMetrics, estimateTokens, embedCostOf, grounding, LOG_CONTENT } from '../metrics/index.js'
 
@@ -32,9 +34,18 @@ const DECLINED_REPLY = {
     message: 'The user declined this action. Nothing was created or changed. Tell the user it was cancelled and do not claim it was done.',
 }
 
-const ABANDONED_REPLY = {
-    error: 'An earlier action in this same confirmation failed, so this one was not run. Nothing was created or changed by it. Tell the user which part failed and what is still missing, and do not claim this one was done.',
+const NOTHING_HAPPENED_REPLY = {
+    error: 'Another action in this same confirmation failed, so the whole set was rolled back. Nothing was created or changed by any of it. Tell the user which part failed and that nothing was applied, and do not claim any of it was done.',
 }
+
+const SET_REJECTED_REPLY = {
+    error: 'Another call sent alongside this one did not fit its tool, so none of them ran. Nothing was created or changed.',
+}
+
+// (problem: string) -> the tool result for a call that did not fit its own spec
+const rejection = (problem) => ({
+    error: `This call was rejected before it ran, because ${problem}. Nothing was created or changed. Send it again with every required field filled in on every entry.`,
+})
 
 const STEP_LIMIT_REPLY = `I stopped after ${MAX_STEPS} steps without finishing that. Try asking for one thing at a time.`
 
@@ -48,6 +59,25 @@ const awaitingApproval = (messages) => {
     const last = messages.findLast(message => message.role === 'assistant')
 
     return (last?.tool_calls ?? []).filter(needsApproval)
+}
+
+/*
+  (turn, calls) -> boolean, true when every call fits its tool's declared spec.
+
+  All or nothing: if one call is malformed, every call in the reply is answered
+  and none of them run or are shown, so the model re-sends the whole set. This
+  is the only thing checking the model's arguments, and it runs before anything
+  reaches summarise, which would otherwise show the user "undefined in undefined".
+*/
+const validated = (turn, calls) => {
+    const problems = calls.map(call => argumentsOf(call).error)
+    if (!problems.some(Boolean)) return true
+
+    calls.forEach((call, index) => applyOutcome(turn, call, {
+        reply: problems[index] ? rejection(problems[index]) : SET_REJECTED_REPLY,
+    }))
+
+    return false
 }
 
 /*
@@ -74,7 +104,7 @@ const retrievalFields = (name, args, outcome) => {
   Anything gated, plus anything marked `once`, goes through the ledger, so a
   resent call runs only the first time.
 */
-const runToolCall = async (call, turn, step) => {
+const runToolCall = async (call, turn, step, ctx) => {
     const name = call.function.name
     const tool = TOOLS[name]
     const started = Date.now()
@@ -108,19 +138,19 @@ const runToolCall = async (call, turn, step) => {
         return outcome
     }
 
-    let args
-    try {
-        args = JSON.parse(call.function.arguments)
-    } catch (error) {
-        record(null, null, causeOf(error))
+    const { args, error: malformed } = argumentsOf(call)
 
-        throw error
+    if (malformed) {
+        const outcome = { reply: rejection(malformed) }
+        record(args, outcome, 'invalid_arguments')
+
+        return outcome
     }
 
     try {
         const outcome = (!tool.confirm && !tool.once)
-            ? await tool.run(args, turn.context)
-            : await runOnce(call, turn.context.owner, () => tool.run(args, turn.context))
+            ? await tool.run(args, ctx)
+            : await runOnce(call, ctx.owner, () => tool.run(args, ctx))
 
         record(args, outcome, outcome?.reply?.error ? 'tool_reported_error' : null)
 
@@ -258,28 +288,67 @@ const applyOutcome = (turn, call, { reply, documents = [], removed = [], offer =
     offer.filter(name => TOOLS[name]).forEach(name => turn.offered.add(name))
 }
 
-/*
-  (turn, calls, step, stopOnError) -> Promise<void>, runs a batch of calls.
+// (outcome) -> what a call reports once its batch was rolled back. Whatever
+// failed keeps its own error; the rest are told nothing of theirs was written,
+// and the documents they returned are dropped, because nothing was.
+const rolledBack = (outcome) => ({
+    reply: outcome?.reply?.error ? outcome.reply : NOTHING_HAPPENED_REPLY,
+})
 
-  They execute in the order the schema requires, then their results are recorded
-  in the order the model asked for, so the transcript still lines up with its own
-  reply. stopOnError abandons the rest after the first failure, which is what a
-  batch the user approved as one set needs.
+/*
+  Run a batch of calls.
+
+  In:  turn, calls, step
+       atomic  boolean, for the set the user approved as one. Those run inside a
+               single transaction, so the first error rolls back every write in
+               the batch and the ledger forgets them all
+
+  Out: Promise<void>. They execute in the order the schema requires, then their
+       results are recorded in the order the model asked for, so the transcript
+       lines up with the reply that produced it.
 */
-const runBatch = async (turn, calls, step, stopOnError = false) => {
+const runBatch = async (turn, calls, step, atomic = false) => {
+    if (!calls.length) return
+
+    const session = atomic ? await mongoose.startSession() : null
+    const ctx = { ...turn.context, session }
     const outcomes = new Map()
     let failed = false
 
-    for (const call of inRunOrder(calls)) {
-        if (failed) {
-            outcomes.set(call.id, { reply: ABANDONED_REPLY })
-            continue
+    try {
+        session?.startTransaction()
+
+        for (const call of inRunOrder(calls)) {
+            if (failed) {
+                outcomes.set(call.id, { reply: NOTHING_HAPPENED_REPLY })
+                continue
+            }
+
+            const outcome = await runToolCall(call, turn, step, ctx)
+            outcomes.set(call.id, outcome)
+
+            failed = atomic && Boolean(outcome.reply?.error)
         }
 
-        const outcome = await runToolCall(call, turn, step)
-        outcomes.set(call.id, outcome)
+        if (session && failed) {
+            await session.abortTransaction()
+            await forget(calls.map(call => call.id), turn.context.owner)
 
-        if (stopOnError) failed = Boolean(outcome.reply?.error)
+            calls.forEach(call => outcomes.set(call.id, rolledBack(outcomes.get(call.id))))
+        } else if (session) {
+            await session.commitTransaction()
+        }
+    } catch (error) {
+        // A tool that threw rather than reporting an error still wrote nothing,
+        // so the ledger has to forget it or a resend would replay the failure.
+        if (session?.inTransaction()) {
+            await session.abortTransaction().catch(() => {})
+            await forget(calls.map(call => call.id), turn.context.owner).catch(() => {})
+        }
+
+        throw error
+    } finally {
+        await session?.endSession()
     }
 
     for (const call of calls) applyOutcome(turn, call, outcomes.get(call.id))
@@ -367,6 +436,10 @@ export const runAgent = async ({ messages, approved, owner, timeZone }) => {
 
             const calls = reply.tool_calls ?? []
             if (!calls.length) return toResponse(turn, [])
+
+            // All of them have to fit their tools or none of them run. The model
+            // is told what was wrong and tries again, without the user seeing it.
+            if (!validated(turn, calls)) continue
 
             await runBatch(turn, calls.filter(call => !needsApproval(call)), step)
 

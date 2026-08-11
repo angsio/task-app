@@ -34,6 +34,13 @@ const store = async (record, outcome) => {
     await record.save()
 }
 
+// (callIds: string[], owner: string) -> Promise<void>
+// Drops the records for calls whose work was rolled back. They did not happen,
+// so sending them again has to run them rather than replay a stored outcome.
+export const forget = async (callIds, owner) => {
+    await ToolCall.deleteMany({ owner, callId: { $in: callIds } })
+}
+
 /*
   Run a tool call at most once, ever.
 

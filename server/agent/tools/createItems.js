@@ -47,11 +47,11 @@ export const createItems = {
         required: ['items']
     },
     summarise: ({ items }, { timeZone }) => items.map(item => `${item.title}, ${item.itemType} in ${item.theme}, ${timingText(item, timeZone)}`),
-    run: async ({ items } = {}, { owner }) => {
+    run: async ({ items } = {}, ctx) => {
         const staged = []
 
         // Every theme named in the batch, resolved in one query.
-        const themeIds = await findThemeIds(items.map(item => item.theme), owner)
+        const themeIds = await findThemeIds(items.map(item => item.theme), ctx)
 
         for (const item of items) {
             const Model = MODELS[item.itemType]
@@ -60,7 +60,7 @@ export const createItems = {
             const themeId = themeIds.get(item.theme?.trim().toLowerCase())
             if (!themeId) return { reply: { error: `No theme named "${item.theme}" exists.` } }
 
-            const doc = new Model({ ...item, theme: themeId, owner })
+            const doc = new Model({ ...item, theme: themeId, owner: ctx.owner })
             try {
                 await doc.validate()
             } catch (invalid) {
@@ -70,7 +70,7 @@ export const createItems = {
             staged.push({ doc, theme: item.theme })
         }
 
-        await Promise.all(staged.map(({ doc }) => doc.save()))
+        await Promise.all(staged.map(({ doc }) => doc.save({ session: ctx.session })))
 
         return {
             reply: {

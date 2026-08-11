@@ -43,13 +43,13 @@ export const updateThemes = {
         required: ['themes']
     },
     summarise: ({ themes }) => themes.map(theme => `Change the theme ${theme.name}: ${changesText(theme.changes)}`),
-    run: async ({ themes } = {}, { owner }) => {
+    run: async ({ themes } = {}, ctx) => {
         const staged = []
 
         // The names being changed and the names being changed to, resolved in
         // one query, so a rename onto a name already in use is caught before
         // anything saves.
-        const known = await findThemes(themes.flatMap(theme => [theme.name, theme.changes?.name]), owner)
+        const known = await findThemes(themes.flatMap(theme => [theme.name, theme.changes?.name]), ctx)
 
         for (const theme of themes) {
             const doc = known.get(theme.name?.trim().toLowerCase())
@@ -84,7 +84,7 @@ export const updateThemes = {
             staged.push(doc)
         }
 
-        await Promise.all(staged.map(doc => doc.save()))
+        await Promise.all(staged.map(doc => doc.save({ session: ctx.session })))
 
         return {
             reply: {

@@ -20,11 +20,11 @@ export const deleteThemes = {
         required: ['names']
     },
     summarise: ({ names }) => names.map(name => `Delete the theme ${name}, and every item in it`),
-    run: async ({ names } = {}, { owner }) => {
+    run: async ({ names } = {}, ctx) => {
         const staged = []
 
         // Every name in the batch, resolved against their board in one query.
-        const themes = await findThemes(names, owner)
+        const themes = await findThemes(names, ctx)
 
         for (const name of names) {
             const theme = themes.get(name?.trim().toLowerCase())
@@ -37,11 +37,11 @@ export const deleteThemes = {
 
         // Read before the delete, because the client needs the items it is about
         // to lose from its cache.
-        const orphaned = await Item.find({ owner, theme: { $in: themeIds } }).lean()
+        const orphaned = await Item.find({ owner: ctx.owner, theme: { $in: themeIds } }).session(ctx.session).lean()
 
         await Promise.all([
-            Theme.deleteMany({ owner, _id: { $in: themeIds } }),
-            Item.deleteMany({ owner, theme: { $in: themeIds } }),
+            Theme.deleteMany({ owner: ctx.owner, _id: { $in: themeIds } }, { session: ctx.session }),
+            Item.deleteMany({ owner: ctx.owner, theme: { $in: themeIds } }, { session: ctx.session }),
         ])
 
         return {

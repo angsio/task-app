@@ -31,18 +31,18 @@ export const createThemes = {
         required: ['themes']
     },
     summarise: ({ themes }) => themes.map(theme => `${theme.name}, a new theme`),
-    run: async ({ themes } = {}, { owner }) => {
+    run: async ({ themes } = {}, ctx) => {
         const staged = []
 
         // Every name in the batch, checked against the board in one query.
-        const taken = await findThemeIds(themes.map(theme => theme.name), owner)
+        const taken = await findThemeIds(themes.map(theme => theme.name), ctx)
 
         for (const theme of themes) {
             const name = theme.name?.trim()
             if (!name) return { reply: { error: 'Every theme needs a name.' } }
             if (taken.has(name.toLowerCase())) return { reply: { error: `A theme named "${name}" already exists.` } }
 
-            const doc = new Theme({ name, color: theme.color ?? DEFAULT_COLOR, owner })
+            const doc = new Theme({ name, color: theme.color ?? DEFAULT_COLOR, owner: ctx.owner })
             try {
                 await doc.validate()
             } catch (invalid) {
@@ -54,7 +54,7 @@ export const createThemes = {
             staged.push(doc)
         }
 
-        await Promise.all(staged.map(doc => doc.save()))
+        await Promise.all(staged.map(doc => doc.save({ session: ctx.session })))
 
         return {
             reply: {
