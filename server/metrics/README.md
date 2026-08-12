@@ -28,7 +28,7 @@ npm run metrics     # print the report
 
 ## The seams
 
-Five event types. Six calls in `agent/runAgent.js`, four of them at choke points
+Five event types. Nine calls in `agent/runAgent.js`, most of them at choke points
 the loop already had.
 
 | Event | Emitted where | Once per |

@@ -53,6 +53,19 @@ rather than writing a second time. A write that throws is recorded as failed
 instead of released, since it may have landed partway — asking again produces a
 new call id and a fresh attempt, so nothing is stranded.
 
+One approval usually carries several writes, and they either all land or none of
+them do. The set runs inside a single Mongo transaction, ordered so a theme is
+written before the items filed under it and deleted after them. The first error
+aborts the lot, and the ledger forgets those calls, so asking again runs them
+properly instead of replaying a failure.
+
+Transactions are the part unit tests cannot reach, so `npm run txcheck` runs 21
+assertions against a real replica set. It works on a scratch database on the
+app's own cluster and drops it on the way out. What it checks: that a tool sees
+an earlier tool's uncommitted write inside the same set, that a failed set leaves
+nothing behind, that the ledger forgets rolled-back calls, that a tool which
+throws still unwinds, and that deleting a theme takes its items with it.
+
 Ownership is the other thing the loop cannot get wrong. Every tool is handed the
 signed-in account id from the session, and `owner` is stripped from request
 bodies before they reach the database, so an item cannot be filed under somebody
@@ -60,25 +73,27 @@ else's name even if the model asks for it.
 
 ## Known Limitations
 
-There are eight retrievable tools now, up from three. The threshold has more to
-do than it used to: list, create, update and delete each exist for items and for
-themes, so a query has close neighbours to get wrong rather than one obvious
-answer. Eight is still not thirty, which is the size the pipeline was built for.
+Eight tools are retrievable now, up from three. List, create, update and delete
+each exist for items and for themes, so a query has close neighbours to get wrong
+instead of one obvious answer. Eight is still not thirty, which is the size this
+was built for.
 
-Retrieval quality is measured now rather than assumed. `npm run eval` scores it
-against 46 cases offline, and `npm run metrics` reports what the live agent did.
-[`server/metrics/`](server/metrics/README.md) covers what those numbers mean and
-what they leave out. The main thing they leave out is groundedness: there is no
-score for whether an answer stuck to what the tools returned, only a narrow check
-on the times the model stated.
+Retrieval quality is measured now. `npm run eval` scores it against 46 cases
+offline and `npm run metrics` prints what the live agent did.
+[`server/metrics/`](server/metrics/README.md) says what those numbers mean and
+what they miss. The biggest miss is groundedness: nothing scores whether an
+answer stuck to what the tools returned, only a narrow check on the clock times
+it quoted.
 
 Writes are last-write-wins at field granularity, because `PATCH` is partial and
 there is no version check on the document. Two tabs editing the same item will
 not conflict, they will simply overwrite each other. The ledger stops one call
 running twice. It does nothing about two different calls arriving at once.
 
-There are still no automated tests. The eval harness is not one. It scores
-retrieval, it asserts nothing, and it cannot fail a build.
+There is no test framework and nothing runs on push. `txcheck` asserts, but you
+have to run it yourself. The eval scores retrieval and asserts nothing at all.
+Neither one touches the API routes, so status codes, auth rejection and request
+validation are unchecked.
 
 ## Running Locally
 
@@ -93,13 +108,17 @@ cd client && npm install && npm run dev      # :5173
 The descriptions are what retrieval matches against, so editing one without
 reseeding leaves the index disagreeing with the code.
 
-Two more, neither of which touches the request path:
+Three more, none of which touch the request path:
 
 ```bash
 cd server
 npm run eval        # score retrieval against metrics/eval/cases.json
 npm run metrics     # print the report over the retained window
+npm run txcheck     # 21 assertions on a scratch database, dropped after
 ```
+
+`txcheck` needs `MONGODB_URI` pointing at a replica set, since transactions do
+not exist without one. Atlas is one by default.
 
 ```
 server/.env   PORT  MONGODB_URI  AUTH_URL  ALLOWED_ORIGINS
